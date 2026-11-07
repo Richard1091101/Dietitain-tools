@@ -1,0 +1,6 @@
+{
+  "name": "營養師專業臨床工具包 (Dietitian Pro Suite)",
+  "description": "整合「台灣食材營養寶典」、「飲食分析評估(飲食評估/DRIs分析)」與「進階臨床菜單生成器」，支援多天配菜、HBV高生物價蛋白平衡、烹調用油演算法及一鍵連動評估。版權宣告所有人：richardmimic / 營養吳理",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
