@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>進階臨床營養菜單生成器 (100%離線版)</title>
+  <style>
+    /* --- 原生 CSS 樣式表 (取代 Tailwind CSS，確保斷網完美呈現) --- */
+    :root {
+      --bg-color: #f8fafc; --card-bg: #ffffff;
+      --text-main: #1e293b; --text-muted: #64748b;
+      --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #e0e7ff;
+      --border: #e2e8f0; --border-focus: #c7d2fe;
+      --success: #10b981; --success-light: #ecfdf5;
+      --danger: #ef4444; --danger-light: #fef2f2;
+      --warning: #f59e0b; --warning-light: #fffbeb;
+      --sky: #0ea5e9; --sky-light: #e0f2fe;
+      --rose: #f43f5e; --rose-light: #ffe4e6;
+      --orange: #f97316; --orange-light: #ffedd5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--text-main); line-height: 1.5; padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 { font-size: 2rem; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .header p { color: var(--text-muted); font-size: 0.95rem; }
+    
+    .layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+    .sidebar { flex: 1 1 300px; background: var(--card-bg); padding: 24px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 20px; }
+    .main-content { flex: 3 1 800px; display: flex; flex-direction: column; gap: 30px; }
+    
+    h2.panel-title { font-size: 1.25rem; font-weight: 600; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    
+    .space-y-4 > * + * { margin-top: 16px; }
+    .space-y-3 > * + * { margin-top: 12px; }
+    .space-y-2 > * + * { margin-top: 8px; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .flex-center { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .flex-gap { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    
+    label { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); display: block; }
+    input[type="number"], select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; outline: none; transition: 0.2s; }
+    input[type="number"]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--primary); }
+    
+    .btn { width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; text-align: center; border: 1px solid transparent; transition: 0.2s; font-size: 0.95rem; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: white; border-color: var(--border); color: var(--text-muted); }
+    .btn-outline:hover { background: var(--bg-color); }
+    .btn-outline.active { background: var(--primary-light); color: var(--primary); border-color: var(--border-focus); }
+    
+    .box { padding: 12px; border-radius: 12px; border: 1px solid var(--border); }
+    .box-indigo { background: #f5f3ff; border-color: #e0e7ff; }
+    .box-rose { background: var(--rose-light); border-color: #fecdd3; }
+    .box-amber { background: var(--warning-light); border-color: #fde68a; }
+    .box-emerald { background: var(--success-light); border-color: #a7f3d0; }
+    
+    .day-header { font-size: 1.5rem; font-weight: 900; color: #312e81; background: #e0e7ff; padding: 6px 16px; border-radius: 8px; display: inline-block; margin-bottom: 8px; }
+    .day-target { color: var(--text-muted); font-weight: 600; margin-left: 12px; font-size: 1rem; }
+    
+    .stats-panel { background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border-focus); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .stats-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .stat-item { text-align: center; display: flex; flex-direction: column; }
+    .stat-val { font-size: 1.4rem; font-weight: bold; color: var(--text-main); }
+    .stat-val.ok { color: var(--success); }
+    .stat-val.warn { color: var(--danger); }
+    
+    .micro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(65px, 1fr)); gap: 10px; }
+    .micro-box { background: var(--bg-color); padding: 8px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+    .micro-label { font-size: 0.65rem; font-weight: bold; margin-bottom: 4px; color: var(--text-muted); }
+    .micro-val { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
+    .micro-val span { font-size: 0.65rem; font-weight: normal; margin-left: 2px; }
+    
+    .meals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+    .meal-card { background: var(--card-bg); padding: 20px; border-radius: 16px; border: 1px solid var(--border); position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .meal-card::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+    .meal-card.main::before { background: linear-gradient(90deg, #34d399, #6366f1); }
+    .meal-card.snack { background: var(--orange-light); border-color: #fed7aa; }
+    .meal-card.snack::before { background: linear-gradient(90deg, #fdba74, #fbbf24); }
+    
+    .meal-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center;}
+    
+    .food-list { list-style: none; }
+    .food-item { padding: 8px 0; border-bottom: 1px dashed var(--bg-color); }
+    .food-item:last-child { border-bottom: none; }
+    .food-item.extra { background: #f8fafc; padding: 6px 8px; border-radius: 8px; margin-top: 4px; }
+    
+    .food-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; flex-wrap: wrap; gap: 8px; }
+    .food-left { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 180px; }
+    .food-right { display: flex; align-items: center; gap: 4px; flex: 1 0 auto; justify-content: flex-end; }
+    
+    .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; flex-shrink: 0; }
+    .tag-method { background: var(--bg-color); color: var(--text-muted); }
+    .tag-extra { background: var(--sky-light); color: var(--sky); }
+    
+    .tag-method-select { background: var(--bg-color); color: var(--text-muted); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; border: 1px dashed transparent; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; transition: 0.2s; text-align: center; }
+    .tag-method-select:hover { border-color: #cbd5e1; background: #e2e8f0; }
+
+    .inline-select { border: none; border-bottom: 1px dashed #cbd5e1; background: transparent; font-weight: 600; color: var(--text-main); cursor: pointer; padding: 0 4px; max-width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    .inline-input { width: 50px; text-align: right; border: 1px solid transparent; background: var(--bg-color); border-radius: 4px; font-weight: bold; font-size: 0.875rem; padding: 2px; }
+    .inline-input:focus { border-color: var(--primary); background: white; }
+    
+    .weight-hint { font-size: 0.7rem; color: var(--text-muted); min-width: 50px; text-align: right; }
+    .oil-row { font-size: 0.7rem; color: var(--orange); display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; }
+    .oil-input { width: 40px; background: #ffedd5; border: 1px solid transparent; border-radius: 4px; text-align: right; font-weight: bold; color: #c2410c; }
+    
+    .del-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 1rem; padding: 2px 6px; border-radius: 4px; }
+    .del-btn:hover { background: var(--danger-light); color: var(--danger); }
+    
+    .add-select { width: 100%; border: 1px dashed var(--border-focus); background: var(--primary-light); color: var(--primary); font-weight: bold; text-align: center; margin-top: 12px; }
+    
+    /* 列印與匯出專屬樣式 */
+    @media print {
+      .print-hidden, .sidebar { display: none !important; }
+      .layout { display: block; }
+      body { background: white; padding: 0; }
+      .main-content { gap: 10px; }
+      .meal-card { break-inside: avoid; border: 1px solid #ccc; background: white !important; }
+      .stats-panel { border: 1px solid #ccc; }
+      select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; }
+      input { border: none !important; background: transparent !important; }
+      .add-select { display: none; }
+      .tag-method-select { border: none !important; pointer-events: none; } 
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="container"></div>
+
+  <script>
+    /* ==============================================
+       1. 核心資料庫 (100% 原生 JS 陣列)
+       整合了極低脂、高鐵鋅硒、微量元素與 CSV 匯入擴充能力
+    ============================================== */
+    const FOOD_DB = {
+      carbs: [
+        { name: '白飯(熟)', c: 0.28, p: 0.03, f: 0, fiber: 0.001, na: 0.02, phos: 0.4, k: 0.4, ca: 0.03, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.04, vitD: 0, fe: 0.002, zn: 0.01, se: 0.01, unit: '碗', uW: 160 },
+        { name: '糙米飯(熟)', c: 0.26, p: 0.03, f: 0.01, fiber: 0.03, na: 0.02, phos: 2.6, k: 2.2, ca: 0.1, mag: 1.1, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.2, vitD: 0, fe: 0.01, zn: 0.02, se: 0.05, unit: '碗', uW: 160 },
+        { name: '地瓜(熟)', c: 0.25, p: 0.02, f: 0, fiber: 0.025, na: 0.4, phos: 0.5, k: 2.8, ca: 0.3, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 15.0, folic: 0.14, vitD: 0, fe: 0.005, zn: 0.003, se: 0.002, unit: '小個', uW: 110 },
+        { name: '義大利麵(熟)', c: 0.25, p: 0.04, f: 0.01, fiber: 0.015, na: 0.05, phos: 0.6, k: 0.5, ca: 0.07, mag: 0.2, epa: 0, n3: 0.1, b12: 0, vitA: 0, folic: 0.1, vitD: 0, fe: 0.01, zn: 0.015, se: 0.3, unit: '碗', uW: 120 },
+        { name: '馬鈴薯(熟)', c: 0.15, p: 0.02, f: 0, fiber: 0.015, na: 0.05, phos: 0.5, k: 4.0, ca: 0.1, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 0.1, folic: 0.15, vitD: 0, fe: 0.008, zn: 0.003, se: 0.002, unit: '中個', uW: 180 },
+        { name: '蕎麥麵(熟)', c: 0.21, p: 0.05, f: 0.01, fiber: 0.015, na: 0.1, phos: 0.8, k: 0.5, ca: 0.1, mag: 0.3, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.3, vitD: 0, fe: 0.015, zn: 0.01, se: 0.05, unit: '碗', uW: 120 },
+        { name: '南瓜(熟)', c: 0.10, p: 0.01, f: 0, fiber: 0.015, na: 0.01, phos: 0.2, k: 3.4, ca: 0.2, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 20.0, folic: 0.15, vitD: 0, fe: 0.008, zn: 0.003, se: 0.001, unit: '份', uW: 85 },
+        { name: '玉米(熟)', c: 0.18, p: 0.03, f: 0.01, fiber: 0.02, na: 0.02, phos: 0.9, k: 2.7, ca: 0.02, mag: 0.4, epa: 0, n3: 0, b12: 0, vitA: 0.5, folic: 0.4, vitD: 0, fe: 0.005, zn: 0.005, se: 0.01, unit: '根', uW: 130 },
+        { name: '藜麥飯(熟)', c: 0.23, p: 0.04, f: 0.02, fiber: 0.03, na: 0.05, phos: 1.5, k: 1.7, ca: 0.1, mag: 0.6, epa: 0, n3: 0.1, b12: 0, vitA: 0, folic: 0.5, vitD: 0, fe: 0.015, zn: 0.02, se: 0.02, unit: '碗', uW: 160 },
+        { name: '芋頭(熟)', c: 0.26, p: 0.02, f: 0, fiber: 0.04, na: 0.1, phos: 0.8, k: 5.9, ca: 0.2, mag: 0.3, epa: 0, n3: 0, b12: 0, vitA: 0.1, folic: 0.2, vitD: 0, fe: 0.006, zn: 0.003, se: 0.002, unit: '份', uW: 55 },
+        { name: '冬粉(熟/低磷鉀)', c: 0.25, p: 0, f: 0, fiber: 0.01, na: 0.05, phos: 0.05, k: 0.05, ca: 0.2, mag: 0.05, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0.001, zn: 0.001, se: 0, unit: '碗', uW: 120 },
+        { name: '米粉(熟/低磷鉀)', c: 0.26, p: 0.01, f: 0, fiber: 0.01, na: 0.1, phos: 0.2, k: 0.1, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.01, vitD: 0, fe: 0.002, zn: 0.002, se: 0.001, unit: '碗', uW: 120 },
+        { name: '蘿蔔糕(低磷鉀)', c: 0.22, p: 0.02, f: 0.05, fiber: 0.01, na: 3.5, phos: 0.4, k: 1.0, ca: 0.2, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.05, vitD: 0, fe: 0.003, zn: 0.002, se: 0.005, unit: '片', uW: 50 }
+      ],
+      snackCarbs: [
+        { name: '地瓜(熟)', c: 0.25, p: 0.02, f: 0, fiber: 0.025, na: 0.4, phos: 0.5, k: 2.8, ca: 0.3, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 15.0, folic: 0.14, vitD: 0, fe: 0.005, zn: 0.003, se: 0.002, unit: '小個', uW: 110 },
+        { name: '全麥吐司', c: 0.45, p: 0.09, f: 0.04, fiber: 0.06, na: 4.5, phos: 2.0, k: 2.5, ca: 0.7, mag: 0.8, epa: 0, n3: 0.5, b12: 0, vitA: 0, folic: 0.4, vitD: 0, fe: 0.025, zn: 0.015, se: 0.3, unit: '片', uW: 60 },
+        { name: '燕麥片', c: 0.60, p: 0.13, f: 0.08, fiber: 0.1, na: 0.05, phos: 4.0, k: 3.5, ca: 0.5, mag: 1.3, epa: 0, n3: 1.1, b12: 0, vitA: 0, folic: 0.3, vitD: 0, fe: 0.04, zn: 0.03, se: 0.05, unit: '湯匙', uW: 7 },
+        { name: '蘇打餅乾', c: 0.65, p: 0.08, f: 0.15, fiber: 0.02, na: 5.0, phos: 1.0, k: 1.0, ca: 0.2, mag: 0.2, epa: 0, n3: 0.1, b12: 0, vitA: 0, folic: 0.1, vitD: 0, fe: 0.02, zn: 0.01, se: 0.02, unit: '片', uW: 7 },
+        { name: '貝果(原味)', c: 0.50, p: 0.10, f: 0.01, fiber: 0.02, na: 4.0, phos: 1.0, k: 0.8, ca: 0.2, mag: 0.3, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.2, vitD: 0, fe: 0.015, zn: 0.01, se: 0.2, unit: '個', uW: 90 },
+        { name: '西谷米(熟/低磷鉀)', c: 0.30, p: 0, f: 0, fiber: 0, na: 0.02, phos: 0.05, k: 0.05, ca: 0.1, mag: 0.05, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0.001, zn: 0.001, se: 0, unit: '碗', uW: 120 }
+      ],
+      proteins: [
+        { name: '雞胸肉', c: 0, p: 0.23, f: 0.015, fiber: 0, na: 0.5, phos: 2.0, k: 3.3, ca: 0.05, mag: 0.3, epa: 0, n3: 0.2, b12: 0.002, vitA: 0.1, folic: 0.05, vitD: 0, fe: 0.004, zn: 0.01, se: 0.25, unit: '份', uW: 30 },
+        { name: '傳統豆腐', c: 0.02, p: 0.08, f: 0.03, fiber: 0.01, na: 0.05, phos: 1.0, k: 1.2, ca: 1.6, mag: 0.5, epa: 0, n3: 1.5, b12: 0, vitA: 0, folic: 0.15, vitD: 0, fe: 0.02, zn: 0.015, se: 0.05, unit: '份', uW: 80 },
+        { name: '鮭魚', c: 0, p: 0.20, f: 0.13, fiber: 0, na: 0.5, phos: 2.5, k: 3.6, ca: 0.1, mag: 0.3, epa: 4.0, n3: 12.0, b12: 0.03, vitA: 0.4, folic: 0.25, vitD: 0.16, fe: 0.005, zn: 0.005, se: 0.4, unit: '份', uW: 30 }, 
+        { name: '瘦牛排', c: 0, p: 0.21, f: 0.05, fiber: 0, na: 0.6, phos: 2.1, k: 3.2, ca: 0.1, mag: 0.2, epa: 0.1, n3: 0.3, b12: 0.02, vitA: 0.05, folic: 0.08, vitD: 0.005, fe: 0.025, zn: 0.045, se: 0.2, unit: '份', uW: 30 },
+        { name: '豬里肌', c: 0, p: 0.21, f: 0.04, fiber: 0, na: 0.5, phos: 2.2, k: 3.5, ca: 0.1, mag: 0.2, epa: 0, n3: 0.1, b12: 0.01, vitA: 0.05, folic: 0.05, vitD: 0.005, fe: 0.01, zn: 0.02, se: 0.1, unit: '份', uW: 30 },
+        { name: '水煮蛋', c: 0.01, p: 0.13, f: 0.10, fiber: 0, na: 1.4, phos: 1.8, k: 1.3, ca: 0.5, mag: 0.1, epa: 0.1, n3: 0.7, b12: 0.011, vitA: 2.5, folic: 0.45, vitD: 0.016, fe: 0.015, zn: 0.015, se: 0.3, unit: '顆', uW: 55 },
+        { name: '雞腿肉(去皮)', c: 0, p: 0.18, f: 0.05, fiber: 0, na: 0.8, phos: 1.8, k: 2.5, ca: 0.05, mag: 0.2, epa: 0, n3: 0.1, b12: 0.003, vitA: 0.1, folic: 0.06, vitD: 0, fe: 0.006, zn: 0.015, se: 0.15, unit: '份', uW: 40 },
+        { name: '鯛魚', c: 0, p: 0.18, f: 0.02, fiber: 0, na: 0.4, phos: 2.0, k: 3.0, ca: 0.1, mag: 0.3, epa: 0.5, n3: 1.5, b12: 0.01, vitA: 0.2, folic: 0.1, vitD: 0.02, fe: 0.004, zn: 0.004, se: 0.35, unit: '份', uW: 35 },
+        { name: '蝦仁', c: 0, p: 0.20, f: 0.01, fiber: 0, na: 1.5, phos: 2.0, k: 2.0, ca: 0.5, mag: 0.3, epa: 1.0, n3: 2.0, b12: 0.01, vitA: 0.1, folic: 0.02, vitD: 0.001, fe: 0.005, zn: 0.015, se: 0.45, unit: '份', uW: 50 },
+        { name: '鮪魚罐頭(水煮)', c: 0, p: 0.21, f: 0.01, fiber: 0, na: 3.0, phos: 1.5, k: 2.0, ca: 0.2, mag: 0.2, epa: 1.5, n3: 3.5, b12: 0.025, vitA: 0.1, folic: 0.05, vitD: 0.04, fe: 0.015, zn: 0.01, se: 0.4, unit: '份', uW: 30 },
+        { name: '雞蛋白(低磷鉀)', c: 0.01, p: 0.11, f: 0, fiber: 0, na: 1.6, phos: 0.15, k: 1.4, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0.001, vitA: 0, folic: 0.02, vitD: 0, fe: 0.001, zn: 0.001, se: 0.1, unit: '顆', uW: 35 },
+        { name: '豬血(低磷鉀/高鐵)', c: 0, p: 0.06, f: 0, fiber: 0, na: 2.0, phos: 0.2, k: 0.5, ca: 0.3, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0.28, zn: 0.02, se: 0.1, unit: '塊', uW: 100 },
+        { name: '生豆包(高鈣)', c: 0.05, p: 0.20, f: 0.15, fiber: 0.02, na: 0.1, phos: 1.2, k: 1.5, ca: 2.5, mag: 0.6, epa: 0, n3: 0.5, b12: 0, vitA: 0, folic: 0.1, vitD: 0, fe: 0.025, zn: 0.02, se: 0.05, unit: '片', uW: 50 },
+        { name: '干貝(極低脂)', c: 0.03, p: 0.16, f: 0.005, fiber: 0, na: 2.0, phos: 1.5, k: 3.2, ca: 0.2, mag: 0.4, epa: 0.1, n3: 0.2, b12: 0.02, vitA: 0, folic: 0.1, vitD: 0, fe: 0.02, zn: 0.03, se: 0.2, unit: '顆', uW: 20 },
+        { name: '花枝/魷魚(極低脂)', c: 0.02, p: 0.16, f: 0.005, fiber: 0, na: 3.0, phos: 2.0, k: 2.8, ca: 0.3, mag: 0.3, epa: 0.2, n3: 0.4, b12: 0.01, vitA: 0.1, folic: 0.05, vitD: 0, fe: 0.01, zn: 0.015, se: 0.4, unit: '份', uW: 50 },
+        { name: '蛤蜊肉(極低脂/高鐵)', c: 0.04, p: 0.10, f: 0.005, fiber: 0, na: 4.0, phos: 1.5, k: 3.0, ca: 0.5, mag: 0.2, epa: 0.1, n3: 0.2, b12: 0.5, vitA: 0.2, folic: 0.2, vitD: 0, fe: 0.15, zn: 0.02, se: 0.3, unit: '份', uW: 50 },
+        { name: '雞里肌(極低脂)', c: 0, p: 0.24, f: 0.006, fiber: 0, na: 0.5, phos: 2.0, k: 3.5, ca: 0.05, mag: 0.3, epa: 0, n3: 0.1, b12: 0.002, vitA: 0.1, folic: 0.05, vitD: 0, fe: 0.005, zn: 0.01, se: 0.2, unit: '條', uW: 40 }
+      ],
+      sides: [
+        { name: '番茄炒蛋', c: 0.04, p: 0.05, f: 0.06, fiber: 0.01, na: 2.5, phos: 1.0, k: 2.0, ca: 0.3, mag: 0.1, epa: 0, n3: 0.3, b12: 0.005, vitA: 4.5, folic: 0.2, vitD: 0.01, fe: 0.01, zn: 0.008, se: 0.1, unit: '小盤', uW: 80 },
+        { name: '芹菜炒肉絲', c: 0.03, p: 0.08, f: 0.05, fiber: 0.015, na: 2.0, phos: 1.2, k: 2.5, ca: 0.4, mag: 0.2, epa: 0, n3: 0.1, b12: 0.005, vitA: 0.5, folic: 0.3, vitD: 0.002, fe: 0.015, zn: 0.015, se: 0.05, unit: '小盤', uW: 80 },
+        { name: '毛豆炒豆干', c: 0.05, p: 0.10, f: 0.05, fiber: 0.03, na: 1.5, phos: 1.5, k: 3.0, ca: 1.0, mag: 0.6, epa: 0, n3: 1.0, b12: 0, vitA: 0.5, folic: 1.2, vitD: 0, fe: 0.02, zn: 0.02, se: 0.03, unit: '小盤', uW: 80 },
+        { name: '洋蔥炒蛋', c: 0.05, p: 0.06, f: 0.05, fiber: 0.01, na: 2.0, phos: 0.9, k: 1.8, ca: 0.3, mag: 0.1, epa: 0, n3: 0.2, b12: 0.005, vitA: 1.5, folic: 0.3, vitD: 0.01, fe: 0.01, zn: 0.01, se: 0.1, unit: '小盤', uW: 80 },
+        { name: '胡蘿蔔炒肉片', c: 0.04, p: 0.07, f: 0.04, fiber: 0.015, na: 1.8, phos: 1.1, k: 2.2, ca: 0.2, mag: 0.1, epa: 0, n3: 0.1, b12: 0.005, vitA: 30.0, folic: 0.2, vitD: 0.002, fe: 0.01, zn: 0.015, se: 0.05, unit: '小盤', uW: 80 },
+        { name: '韭菜炒蛋', c: 0.03, p: 0.06, f: 0.06, fiber: 0.02, na: 1.5, phos: 1.0, k: 2.0, ca: 0.5, mag: 0.1, epa: 0, n3: 0.3, b12: 0.005, vitA: 5.0, folic: 0.5, vitD: 0.01, fe: 0.015, zn: 0.01, se: 0.1, unit: '小盤', uW: 80 },
+        { name: '青椒炒肉絲', c: 0.04, p: 0.07, f: 0.04, fiber: 0.02, na: 1.5, phos: 1.0, k: 2.0, ca: 0.2, mag: 0.1, epa: 0, n3: 0.1, b12: 0.005, vitA: 1.5, folic: 0.3, vitD: 0.002, fe: 0.01, zn: 0.015, se: 0.05, unit: '小盤', uW: 80 },
+        { name: '苦瓜鹹蛋', c: 0.03, p: 0.04, f: 0.07, fiber: 0.02, na: 3.5, phos: 1.2, k: 2.5, ca: 0.4, mag: 0.2, epa: 0, n3: 0.2, b12: 0.005, vitA: 2.0, folic: 0.4, vitD: 0.01, fe: 0.01, zn: 0.01, se: 0.1, unit: '小盤', uW: 80 },
+        { name: '香菇炒雞丁', c: 0.05, p: 0.09, f: 0.03, fiber: 0.03, na: 1.5, phos: 1.5, k: 2.5, ca: 0.1, mag: 0.2, epa: 0, n3: 0.1, b12: 0.002, vitA: 0.2, folic: 0.3, vitD: 0.02, fe: 0.01, zn: 0.012, se: 0.15, unit: '小盤', uW: 80 },
+        { name: '木耳炒蛋(高鈣低磷)', c: 0.03, p: 0.06, f: 0.06, fiber: 0.03, na: 1.8, phos: 0.8, k: 1.2, ca: 0.6, mag: 0.1, epa: 0, n3: 0.1, b12: 0.005, vitA: 1.0, folic: 0.2, vitD: 0.01, fe: 0.015, zn: 0.01, se: 0.1, unit: '小盤', uW: 80 },
+        { name: '韭黃炒豆包(高鈣)', c: 0.04, p: 0.12, f: 0.08, fiber: 0.02, na: 1.5, phos: 1.0, k: 1.5, ca: 1.5, mag: 0.3, epa: 0, n3: 0.2, b12: 0, vitA: 0.5, folic: 0.5, vitD: 0, fe: 0.02, zn: 0.015, se: 0.04, unit: '小盤', uW: 80 }
+      ],
+      veggies: [
+        { name: '高麗菜', c: 0.05, p: 0.013, f: 0, fiber: 0.013, na: 0.1, phos: 0.3, k: 1.5, ca: 0.4, mag: 0.1, epa: 0, n3: 0.1, b12: 0, vitA: 0.1, folic: 0.5, vitD: 0, fe: 0.004, zn: 0.002, se: 0.01, unit: '份', uW: 100 },
+        { name: '青花菜', c: 0.04, p: 0.028, f: 0, fiber: 0.026, na: 0.3, phos: 0.7, k: 3.0, ca: 0.5, mag: 0.2, epa: 0, n3: 0.2, b12: 0, vitA: 3.5, folic: 0.6, vitD: 0, fe: 0.008, zn: 0.004, se: 0.02, unit: '份', uW: 100 },
+        { name: '菠菜', c: 0.03, p: 0.028, f: 0, fiber: 0.022, na: 0.8, phos: 0.5, k: 5.5, ca: 1.0, mag: 0.8, epa: 0, n3: 0.1, b12: 0, vitA: 25.0, folic: 1.5, vitD: 0, fe: 0.025, zn: 0.005, se: 0.01, unit: '份', uW: 100 },
+        { name: '小白菜', c: 0.02, p: 0.015, f: 0, fiber: 0.012, na: 0.2, phos: 0.4, k: 2.5, ca: 1.0, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 1.5, folic: 0.8, vitD: 0, fe: 0.01, zn: 0.002, se: 0.01, unit: '份', uW: 100 },
+        { name: '青椒', c: 0.05, p: 0.01, f: 0, fiber: 0.02, na: 0.05, phos: 0.2, k: 1.8, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 2.0, folic: 0.2, vitD: 0, fe: 0.004, zn: 0.001, se: 0.005, unit: '份', uW: 100 },
+        { name: '空心菜', c: 0.03, p: 0.02, f: 0, fiber: 0.02, na: 0.2, phos: 0.4, k: 4.5, ca: 0.8, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 12.0, folic: 1.0, vitD: 0, fe: 0.02, zn: 0.004, se: 0.01, unit: '份', uW: 100 },
+        { name: '大白菜', c: 0.03, p: 0.01, f: 0, fiber: 0.015, na: 0.1, phos: 0.3, k: 1.5, ca: 0.3, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.2, folic: 0.4, vitD: 0, fe: 0.003, zn: 0.002, se: 0.005, unit: '份', uW: 100 },
+        { name: '絲瓜', c: 0.04, p: 0.01, f: 0, fiber: 0.01, na: 0.1, phos: 0.2, k: 1.2, ca: 0.2, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.5, folic: 0.2, vitD: 0, fe: 0.004, zn: 0.001, se: 0.005, unit: '份', uW: 100 },
+        { name: '四季豆', c: 0.07, p: 0.02, f: 0, fiber: 0.03, na: 0.1, phos: 0.4, k: 2.0, ca: 0.4, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 1.0, folic: 0.4, vitD: 0, fe: 0.01, zn: 0.002, se: 0.01, unit: '份', uW: 100 },
+        { name: '金針菇', c: 0.03, p: 0.02, f: 0, fiber: 0.025, na: 0.1, phos: 0.8, k: 2.5, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0.3, vitD: 0.05, fe: 0.01, zn: 0.005, se: 0.02, unit: '份', uW: 100 },
+        { name: '芥藍菜(水煮/高鈣)', c: 0.04, p: 0.02, f: 0, fiber: 0.02, na: 0.1, phos: 0.4, k: 1.5, ca: 1.8, mag: 0.3, epa: 0, n3: 0, b12: 0, vitA: 15.0, folic: 0.9, vitD: 0, fe: 0.015, zn: 0.004, se: 0.01, unit: '份', uW: 100 },
+        { name: '黑木耳(熟/高鈣)', c: 0.05, p: 0.01, f: 0, fiber: 0.05, na: 0.1, phos: 0.2, k: 0.6, ca: 0.5, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 0.1, folic: 0.1, vitD: 0.1, fe: 0.04, zn: 0.005, se: 0.02, unit: '份', uW: 100 },
+        { name: '大黃瓜(熟/低鉀)', c: 0.03, p: 0.01, f: 0, fiber: 0.01, na: 0.1, phos: 0.2, k: 1.0, ca: 0.3, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.2, folic: 0.1, vitD: 0, fe: 0.002, zn: 0.001, se: 0.005, unit: '份', uW: 100 },
+        { name: '豆芽菜(熟/低鉀)', c: 0.03, p: 0.03, f: 0, fiber: 0.015, na: 0.1, phos: 0.5, k: 1.0, ca: 0.3, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.1, folic: 0.3, vitD: 0, fe: 0.008, zn: 0.003, se: 0.01, unit: '份', uW: 100 }
+      ],
+      dairy: [
+        { name: '全脂鮮奶', c: 0.05, p: 0.03, f: 0.03, fiber: 0, na: 0.4, phos: 0.9, k: 1.5, ca: 1.0, mag: 0.1, epa: 0, n3: 0.1, b12: 0.004, vitA: 0.38, folic: 0.05, vitD: 0.01, fe: 0.001, zn: 0.004, se: 0.02, unit: '杯', uW: 240 },
+        { name: '低脂鮮奶', c: 0.05, p: 0.03, f: 0.015, fiber: 0, na: 0.4, phos: 0.9, k: 1.5, ca: 1.0, mag: 0.1, epa: 0, n3: 0.05, b12: 0.004, vitA: 0.15, folic: 0.05, vitD: 0.01, fe: 0.001, zn: 0.004, se: 0.02, unit: '杯', uW: 240 },
+        { name: '無糖優酪乳', c: 0.05, p: 0.03, f: 0, fiber: 0, na: 0.5, phos: 1.0, k: 1.6, ca: 1.1, mag: 0.1, epa: 0, n3: 0, b12: 0.003, vitA: 0.1, folic: 0.05, vitD: 0.01, fe: 0.001, zn: 0.005, se: 0.02, unit: '杯', uW: 240 },
+        { name: '無糖豆漿', c: 0.01, p: 0.03, f: 0.02, fiber: 0.01, na: 0.05, phos: 0.5, k: 1.2, ca: 0.2, mag: 0.3, epa: 0, n3: 0.8, b12: 0, vitA: 0.05, folic: 0.1, vitD: 0, fe: 0.008, zn: 0.006, se: 0.01, unit: '杯', uW: 190 },
+        { name: '希臘優格(無糖)', c: 0.04, p: 0.09, f: 0.05, fiber: 0, na: 0.3, phos: 1.2, k: 1.4, ca: 1.1, mag: 0.1, epa: 0, n3: 0.1, b12: 0.007, vitA: 0.2, folic: 0.06, vitD: 0.002, fe: 0.002, zn: 0.006, se: 0.02, unit: '碗', uW: 210 },
+        { name: '低磷鉀營養品', c: 0.12, p: 0.04, f: 0.04, fiber: 0.01, na: 0.8, phos: 0.5, k: 0.8, ca: 1.0, mag: 0.2, epa: 0, n3: 0.5, b12: 0.005, vitA: 1.5, folic: 0.8, vitD: 0.05, fe: 0.015, zn: 0.015, se: 0.05, unit: '罐', uW: 240 }
+      ],
+      fruits: [
+        { name: '蘋果', c: 0.14, p: 0, f: 0, fiber: 0.024, na: 0.02, phos: 0.1, k: 1.1, ca: 0.05, mag: 0.05, epa: 0, n3: 0, b12: 0, vitA: 0.3, folic: 0.03, vitD: 0, fe: 0.001, zn: 0.001, se: 0, unit: '小顆', uW: 130 },
+        { name: '香蕉', c: 0.23, p: 0.01, f: 0, fiber: 0.026, na: 0.01, phos: 0.2, k: 3.6, ca: 0.05, mag: 0.3, epa: 0, n3: 0.05, b12: 0, vitA: 0.4, folic: 0.2, vitD: 0, fe: 0.003, zn: 0.002, se: 0.01, unit: '根', uW: 70 },
+        { name: '芭樂', c: 0.08, p: 0.01, f: 0, fiber: 0.054, na: 0.05, phos: 0.3, k: 2.8, ca: 0.2, mag: 0.1, epa: 0, n3: 0.1, b12: 0, vitA: 1.5, folic: 0.1, vitD: 0, fe: 0.002, zn: 0.002, se: 0.01, unit: '小顆', uW: 155 },
+        { name: '奇異果', c: 0.15, p: 0.01, f: 0, fiber: 0.03, na: 0.03, phos: 0.3, k: 3.1, ca: 0.3, mag: 0.2, epa: 0, n3: 0.4, b12: 0, vitA: 3.0, folic: 0.25, vitD: 0, fe: 0.003, zn: 0.001, se: 0.02, unit: '顆', uW: 70 },
+        { name: '柳丁', c: 0.12, p: 0.01, f: 0, fiber: 0.02, na: 0.01, phos: 0.2, k: 1.8, ca: 0.4, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 1.0, folic: 0.3, vitD: 0, fe: 0.001, zn: 0.001, se: 0.01, unit: '顆', uW: 130 },
+        { name: '木瓜', c: 0.11, p: 0.01, f: 0, fiber: 0.02, na: 0.02, phos: 0.1, k: 1.8, ca: 0.2, mag: 0.2, epa: 0, n3: 0, b12: 0, vitA: 8.0, folic: 0.4, vitD: 0, fe: 0.002, zn: 0.001, se: 0.01, unit: '份', uW: 150 },
+        { name: '小番茄', c: 0.04, p: 0.01, f: 0, fiber: 0.01, na: 0.05, phos: 0.2, k: 2.3, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 6.0, folic: 0.1, vitD: 0, fe: 0.003, zn: 0.001, se: 0.01, unit: '顆', uW: 10 },
+        { name: '火龍果', c: 0.13, p: 0.01, f: 0, fiber: 0.03, na: 0.01, phos: 0.2, k: 2.0, ca: 0.1, mag: 0.3, epa: 0, n3: 0, b12: 0, vitA: 0.5, folic: 0.1, vitD: 0, fe: 0.005, zn: 0.002, se: 0.01, unit: '份', uW: 110 },
+        { name: '水梨(低鉀)', c: 0.12, p: 0, f: 0, fiber: 0.02, na: 0.02, phos: 0.1, k: 1.2, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.1, folic: 0.05, vitD: 0, fe: 0.001, zn: 0.001, se: 0, unit: '顆', uW: 150 },
+        { name: '鳳梨(低鉀)', c: 0.13, p: 0, f: 0, fiber: 0.015, na: 0.01, phos: 0.1, k: 1.1, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.5, folic: 0.2, vitD: 0, fe: 0.003, zn: 0.001, se: 0.01, unit: '碗', uW: 130 },
+        { name: '葡萄(低鉀)', c: 0.16, p: 0.01, f: 0, fiber: 0.01, na: 0.02, phos: 0.2, k: 1.3, ca: 0.1, mag: 0.1, epa: 0, n3: 0, b12: 0, vitA: 0.5, folic: 0.05, vitD: 0, fe: 0.003, zn: 0.001, se: 0.01, unit: '碗', uW: 130 }
+      ],
+      oils: [
+        { name: '橄欖油', f: 1, fiber: 0, na: 0, phos: 0, k: 0, ca: 0, mag: 0, epa: 0, n3: 7.0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0, zn: 0, se: 0, unit: '茶匙', uW: 5 },
+        { name: '酪梨油', f: 1, fiber: 0, na: 0, phos: 0, k: 0, ca: 0, mag: 0, epa: 0, n3: 1.0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0, zn: 0, se: 0, unit: '茶匙', uW: 5 },
+        { name: '芥花油', f: 1, fiber: 0, na: 0, phos: 0, k: 0, ca: 0, mag: 0, epa: 0, n3: 90.0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0, zn: 0, se: 0, unit: '茶匙', uW: 5 },
+        { name: '芝麻香油', f: 1, fiber: 0, na: 0, phos: 0, k: 0, ca: 0, mag: 0, epa: 0, n3: 4.0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0, zn: 0, se: 0, unit: '茶匙', uW: 5 }
+      ]
+    };
+
+    const ALL_OPTIONS = [
+      { label: '🍚 主食類', type: 'carbs', options: FOOD_DB.carbs },
+      { label: '🥩 豆魚蛋肉', type: 'proteins', options: FOOD_DB.proteins },
+      { label: '🍲 半葷素副菜', type: 'sides', options: FOOD_DB.sides },
+      { label: '🥬 蔬菜類', type: 'veggies', options: FOOD_DB.veggies },
+      { label: '🍪 全穀點心', type: 'snackCarbs', options: FOOD_DB.snackCarbs },
+      { label: '🥛 乳品類', type: 'dairy', options: FOOD_DB.dairy },
+      { label: '🍎 水果類', type: 'fruits', options: FOOD_DB.fruits }
+    ];
+
+    const COOKING_METHODS = [
+      '水煮', '川燙', '水煮川燙', '清蒸', '原味清蒸', '電鍋蒸煮', '電鍋炊煮', '原味蒸煮', '炊煮',
+      '舒肥', '烤箱(無油)', '生菜沙拉', '涼拌', '無油悶煮', '原味',
+      '微油拌飯', '滴油炊煮', '清油拌勻', '水煮滴油', '水油炒', '蒜香燙青菜', '微波淋油',
+      '少油香煎', '微油清炒', '烤箱微油', '烤箱烘烤',
+      '清炒', '乾煎', '嫩煎', '微油香煎', '油煎', '黃金煎飯糰',
+      '熱炒', '爆炒', '紅燒', '酥炸', '蔥油拌', '熱炒(炒飯)', '熱炒(炒麵)', '香酥拔絲'
+    ];
+
+    const getOilGramsForMethod = (method) => {
+      const zero = ['水煮', '川燙', '水煮川燙', '清蒸', '原味清蒸', '電鍋蒸煮', '電鍋炊煮', '原味蒸煮', '炊煮', '舒肥', '烤箱(無油)', '生菜沙拉', '涼拌', '無油悶煮', '原味'];
+      const low = ['微油拌飯', '滴油炊煮', '清油拌勻', '水煮滴油', '水油炒', '蒜香燙青菜', '微波淋油', '少油香煎', '微油清炒', '烤箱微油', '烤箱烘烤', '微油香煎'];
+      const mid = ['清炒', '乾煎', '嫩煎', '油煎'];
+      const high = ['黃金煎飯糰', '熱炒', '爆炒', '紅燒', '酥炸', '蔥油拌', '熱炒(炒飯)', '熱炒(炒麵)', '香酥拔絲'];
+
+      if (zero.includes(method)) return 0;
+      if (low.includes(method)) return 3;
+      if (mid.includes(method)) return 8;
+      if (high.includes(method)) return 15;
+      return 5;
+    };
+
+    const getIconForType = (type) => {
+      switch(type) {
+        case 'carbs': case 'snackCarbs': return '🌾';
+        case 'proteins': return '🐟';
+        case 'sides': return '🍳';
+        case 'veggies': return '🥬';
+        case 'dairy': return '🥛';
+        case 'fruits': return '🍎';
+        default: return '🍽️';
+      }
+    };
+    
+    const getLabelForType = (type) => {
+      switch(type) {
+        case 'carbs': case 'snackCarbs': return '主食';
+        case 'proteins': return '蛋白質';
+        case 'sides': return '副菜';
+        case 'veggies': return '蔬菜';
+        case 'dairy': return '乳品';
+        case 'fruits': return '水果';
+        default: return '加點';
+      }
+    };
+
+    const getCookingMethod = (oilGrams, type, itemName = '') => {
+      if (type === 'carbs' || type === 'snackCarbs') {
+        if (itemName.includes('飯')) {
+          if (oilGrams === 0) return ['電鍋炊煮', '原味蒸煮'];
+          if (oilGrams > 0 && oilGrams <= 5) return ['微油拌飯', '滴油炊煮']; 
+          return ['熱炒(炒飯)', '黃金煎飯糰'];
+        }
+        if (itemName.includes('麵') || itemName.includes('粉')) {
+          if (oilGrams === 0) return ['水煮川燙', '原味清蒸'];
+          if (oilGrams > 0 && oilGrams <= 5) return ['清油拌勻', '水煮滴油'];
+          return ['熱炒', '蔥油拌'];
+        }
+        if (itemName.includes('糕')) {
+          if (oilGrams === 0) return ['電鍋蒸煮'];
+          return ['少油香煎', '乾煎'];
+        }
+        if (['地瓜(熟)', '馬鈴薯(熟)', '南瓜(熟)', '芋頭(熟)', '玉米(熟)'].includes(itemName)) {
+          if (oilGrams === 0) return ['電鍋蒸煮', '水煮'];
+          if (oilGrams > 0 && oilGrams <= 5) return ['烤箱烘烤', '微油香煎'];
+          return ['油煎', '香酥拔絲'];
+        }
+        return ['原味蒸煮', '炊煮'];
+      }
+      if (oilGrams === 0) {
+        if (type === 'veggies') return ['川燙', '清蒸', '生菜沙拉'];
+        if (type === 'proteins') return ['水煮', '清蒸', '舒肥', '烤箱(無油)'];
+        if (type === 'sides') return ['涼拌', '無油悶煮'];
+        return ['原味', '清蒸'];
+      }
+      if (oilGrams > 0 && oilGrams <= 5) {
+        if (type === 'veggies') return ['水油炒', '蒜香燙青菜', '微波淋油'];
+        return ['少油香煎', '微油清炒', '烤箱微油'];
+      }
+      if (oilGrams > 5 && oilGrams <= 10) return ['清炒', '乾煎', '嫩煎'];
+      return ['熱炒', '紅燒', '酥炸', '爆炒'];
+    };
+
+    const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // --- 系統狀態管理 ---
+    const state = {
+      targets: { calories: 1800, protein: 120, fat: 50, carbs: 217.5 },
+      tdeeParams: { gender: 'male', age: 30, height: 170, weight: 65, pal: 1.2 },
+      isTdeeMode: false,
+      hbvRatio: 50,
+      numDays: 7,
+      mealsConfig: { breakfast: true, lunch: true, dinner: true },
+      snacksConfig: { morning: false, afternoon: true, evening: false },
+      generatedMenu: null
+    };
+
+    // --- 運算邏輯 ---
+    const calculateTotalStats = (menu) => {
+      const totalActual = { p: 0, f: 0, c: 0, fiber: 0, na: 0, phos: 0, k: 0, ca: 0, mag: 0, epa: 0, n3: 0, b12: 0, vitA: 0, folic: 0, vitD: 0, fe: 0, zn: 0, se: 0 };
+      const addNut = (item, weight) => {
+        if(!item) return; const w = Number(weight) || 0;
+        totalActual.p += (item.p || 0) * w; totalActual.f += (item.f || 0) * w; totalActual.c += (item.c || 0) * w;
+        totalActual.fiber += (item.fiber || 0) * w; totalActual.na += (item.na || 0) * w; totalActual.phos += (item.phos || 0) * w;
+        totalActual.k += (item.k || 0) * w; totalActual.ca += (item.ca || 0) * w; totalActual.mag += (item.mag || 0) * w;
+        totalActual.epa += (item.epa || 0) * w; totalActual.n3 += (item.n3 || 0) * w;
+        totalActual.b12 += (item.b12 || 0) * w; totalActual.vitA += (item.vitA || 0) * w;
+        totalActual.folic += (item.folic || 0) * w; totalActual.vitD += (item.vitD || 0) * w;
+        totalActual.fe += (item.fe || 0) * w; totalActual.zn += (item.zn || 0) * w; totalActual.se += (item.se || 0) * w;
+      };
+      menu.forEach(meal => {
+        if(meal.isMain) {
+          if (meal.carb) addNut(meal.carb.item, meal.carb.weight); if (meal.protein) addNut(meal.protein.item, meal.protein.weight);
+          if (meal.side) addNut(meal.side.item, meal.side.weight); if (meal.veggie) addNut(meal.veggie.item, meal.veggie.weight);
+          const oilItem = FOOD_DB.oils.find(o => o.name === meal.oilName);
+          if(oilItem) {
+            let totalOil = (meal.carb ? (Number(meal.carb.oil)||0) : 0) + (meal.protein ? (Number(meal.protein.oil)||0) : 0) + (meal.side ? (Number(meal.side.oil)||0) : 0) + (meal.veggie ? (Number(meal.veggie.oil)||0) : 0);
+            if(meal.extra) { meal.extra.forEach(ex => { if (ex.oil > 0) totalOil += Number(ex.oil); }); }
+            addNut(oilItem, totalOil);
+          }
+          if(meal.extra) meal.extra.forEach(ex => addNut(ex, ex.weight));
+        } else {
+          if(meal.items) meal.items.forEach(ex => addNut(ex, ex.weight));
+        }
+      });
+      return { ...totalActual, calories: Math.round((totalActual.p * 4) + (totalActual.c * 4) + (totalActual.f * 9)) };
+    };
+
+    const generateMenu = () => {
+      const multiDayMenu = [];
+      let prevDayMealItems = { '早餐': [], '午餐': [], '晚餐': [], '早點': [], '午點': [], '晚點': [] };
+
+      for (let day = 0; day < state.numDays; day++) {
+        const newMeals = []; let currentDayItems = []; let nextPrevDayMealItems = { '早餐': [], '午餐': [], '晚餐': [], '早點': [], '午點': [], '晚點': [] };
+
+        const getUniqueItem = (pool, mealName) => {
+          let available = pool.filter(item => {
+            const inSameDay = currentDayItems.includes(item.name);
+            const inPrevDaySameMeal = prevDayMealItems[mealName] && prevDayMealItems[mealName].includes(item.name);
+            return !inSameDay && !inPrevDaySameMeal; 
+          });
+          if (available.length === 0) available = pool.filter(item => !currentDayItems.includes(item.name));
+          if (available.length === 0) available = pool;
+          const selected = available[Math.floor(Math.random() * available.length)];
+          currentDayItems.push(selected.name);
+          if (nextPrevDayMealItems[mealName]) nextPrevDayMealItems[mealName].push(selected.name);
+          return selected;
+        };
+
+        const getSnackItem = (mealName) => {
+          const types = ['dairy', 'fruits', 'snackCarbs'];
+          const selectedType = types[Math.floor(Math.random() * types.length)];
+          const pool = FOOD_DB[selectedType];
+          const item = getUniqueItem(pool, mealName);
+          if (selectedType === 'dairy') return { ...item, weight: 240, type: 'dairy' };
+          if (selectedType === 'fruits') return { ...item, weight: 130, type: 'fruits' };
+          return { ...item, weight: 60, type: 'snackCarbs' };
+        };
+
+        const getSnackItems = (mealName) => Array.from({ length: Math.floor(Math.random() * 2) + 1 }, () => getSnackItem(mealName));
+        const dailySnack1 = getSnackItems('早點'); const dailySnack2 = getSnackItems('午點'); const dailySnack3 = getSnackItems('晚點');
+
+        let dairyP = 0;
+        [...dailySnack1, ...dailySnack2, ...dailySnack3].forEach(s => { if (s.type === 'dairy') dairyP += (s.p || 0) * s.weight; });
+
+        const hbvTargetP = state.targets.protein * (state.hbvRatio / 100);
+        const activeMealsCount = (state.mealsConfig.breakfast ? 1 : 0) + (state.mealsConfig.lunch ? 1 : 0) + (state.mealsConfig.dinner ? 1 : 0);
+        const mealsDivisor = Math.max(1, activeMealsCount);
+        const mainDishTotalTargetP = Math.max(0, hbvTargetP - dairyP);
+        const mainDishPerMealP = mainDishTotalTargetP / mealsDivisor;
+
+        let tempTotalActualP = 0, tempTotalActualF = 0, tempTotalActualC = 0;
+        [...dailySnack1, ...dailySnack2, ...dailySnack3].forEach(s => {
+          tempTotalActualP += (s.p || 0) * s.weight; tempTotalActualF += (s.f || 0) * s.weight; tempTotalActualC += (s.c || 0) * s.weight;
+        });
+
+        const remainingTargets = {
+          p: Math.max(0, state.targets.protein - tempTotalActualP) / mealsDivisor,
+          f: Math.max(0, state.targets.fat - tempTotalActualF) / mealsDivisor,
+          c: Math.max(0, state.targets.carbs - tempTotalActualC) / mealsDivisor
+        };
+
+        const createMainMeal = (mealName, extraItems = []) => {
+          const carbItem = getUniqueItem(FOOD_DB.carbs, mealName); const proteinItem = getUniqueItem(FOOD_DB.proteins, mealName);
+          const sideItem = getUniqueItem(FOOD_DB.sides, mealName); const veggieItem = getUniqueItem(FOOD_DB.veggies, mealName);
+          const oilItem = getRandom(FOOD_DB.oils);
+
+          const veggieWeight = 100; let proteinWeight = Math.max(0, mainDishPerMealP / proteinItem.p);
+          let C_rem = remainingTargets.c - (veggieItem.c * veggieWeight);
+          let P_rem = remainingTargets.p - (veggieItem.p * veggieWeight) - (proteinItem.p * proteinWeight);
+          
+          let sideWeight = 0; let carbWeight = 0;
+          const ratio = (carbItem.c > 0) ? (carbItem.p / carbItem.c) : 0;
+          const denom = sideItem.p - (sideItem.c * ratio);
+
+          if (denom > 0.001) { sideWeight = (P_rem - C_rem * ratio) / denom; if (sideWeight < 0) sideWeight = 0; } 
+          else { sideWeight = Math.max(0, P_rem / (sideItem.p || 1)); }
+
+          carbWeight = (C_rem - sideWeight * sideItem.c) / (carbItem.c || 1);
+          if (carbWeight < 0) { carbWeight = 0; sideWeight = Math.max(0, P_rem / (sideItem.p || 1)); }
+
+          const currentFat = (veggieItem.f * veggieWeight) + (carbItem.f * carbWeight) + (proteinItem.f * proteinWeight) + (sideItem.f * sideWeight);
+          let oilWeight = Math.max(0, (remainingTargets.f - currentFat) / oilItem.f);
+          const roundedTotalOil = Math.round(oilWeight);
+
+          let remainingOil = roundedTotalOil; const dishOils = [0, 0, 0, 0];
+          while(remainingOil > 0) { dishOils[Math.floor(Math.random() * 4)]++; remainingOil--; }
+
+          return {
+            isMain: true, name: mealName, oilName: oilItem.name,
+            targets: { c: remainingTargets.c, p: remainingTargets.p, f: remainingTargets.f, mainP: mainDishPerMealP },
+            carb: { item: carbItem, weight: Math.round(carbWeight), method: getRandom(getCookingMethod(dishOils[0], 'carbs', carbItem.name)), oil: dishOils[0] },
+            protein: { item: proteinItem, weight: Math.round(proteinWeight), method: getRandom(getCookingMethod(dishOils[1], 'proteins', proteinItem.name)), oil: dishOils[1] },
+            side: { item: sideItem, weight: Math.round(sideWeight), method: getRandom(getCookingMethod(dishOils[2], 'sides', sideItem.name)), oil: dishOils[2] },
+            veggie: { item: veggieItem, weight: Math.round(veggieWeight), method: getRandom(getCookingMethod(dishOils[3], 'veggies', veggieItem.name)), oil: dishOils[3] },
+            extra: extraItems 
+          };
+        };
+
+        if (state.mealsConfig.breakfast) {
+          if (state.snacksConfig.morning) { newMeals.push(createMainMeal('早餐')); newMeals.push({ isMain: false, name: '早點', items: dailySnack1 }); } 
+          else { newMeals.push(createMainMeal('早餐', dailySnack1)); }
+        } else { newMeals.push({ isMain: false, name: '早點 (獨立保留)', items: dailySnack1 }); }
+
+        if (state.mealsConfig.lunch) {
+          if (state.snacksConfig.afternoon) { newMeals.push(createMainMeal('午餐')); newMeals.push({ isMain: false, name: '午點', items: dailySnack2 }); } 
+          else { newMeals.push(createMainMeal('午餐', dailySnack2)); }
+        } else { newMeals.push({ isMain: false, name: '午點 (獨立保留)', items: dailySnack2 }); }
+
+        if (state.mealsConfig.dinner) {
+          if (state.snacksConfig.evening) { newMeals.push(createMainMeal('晚餐')); newMeals.push({ isMain: false, name: '晚點', items: dailySnack3 }); } 
+          else { newMeals.push(createMainMeal('晚餐', dailySnack3)); }
+        } else { newMeals.push({ isMain: false, name: '晚點 (獨立保留)', items: dailySnack3 }); }
+
+        prevDayMealItems = nextPrevDayMealItems;
+        multiDayMenu.push({ day: day + 1, meals: newMeals, stats: calculateTotalStats(newMeals) });
+      }
+      state.generatedMenu = multiDayMenu;
+      renderApp();
+    };
+
+    // --- HTML UI 產生器 ---
+    const buildOptions = (selectedName) => ALL_OPTIONS.map(group => `<optgroup label="${group.label}">${group.options.map(o => `<option value="${o.name}" ${o.name === selectedName ? 'selected' : ''}>${o.name}</option>`).join('')}</optgroup>`).join('');
+
+    const buildCategorySelect = (cat, selectedName) => {
+      const dbMap = { carb: 'carbs', protein: 'proteins', side: 'sides', veggie: 'veggies' };
+      return FOOD_DB[dbMap[cat]].map(o => `<option value="${o.name}" ${o.name === selectedName ? 'selected' : ''}>${o.name}</option>`).join('');
+    };
+
+    const renderSidebar = () => {
+      const { targets, tdeeParams, isTdeeMode, hbvRatio, numDays, mealsConfig, snacksConfig } = state;
+      const cCal = targets.calories || 1;
+      const pPct = Math.round((targets.protein * 4 / cCal) * 100) || 0;
+      const cPct = Math.round((targets.carbs * 4 / cCal) * 100) || 0;
+      const fPct = Math.max(0, 100 - pPct - cPct);
+
+      return `
+        <div class="sidebar">
+          <h2 class="panel-title flex-gap">🧮 參數設定</h2>
+          <div class="space-y-4">
+            <div class="box box-indigo space-y-2">
+              <div class="flex-between"><label>📅 生成天數</label><span class="tag tag-extra" style="background:#c7d2fe">${numDays} 天</span></div>
+              <input type="range" min="1" max="30" value="${numDays}" data-action="daysSlider">
+            </div>
+
+            <div class="flex-gap">
+              <button class="btn ${!isTdeeMode ? 'btn-primary' : 'btn-outline'}" data-action="toggleMode" data-mode="manual">手動輸入</button>
+              <button class="btn ${isTdeeMode ? 'btn-primary' : 'btn-outline'}" data-action="toggleMode" data-mode="tdee">TDEE 試算</button>
+            </div>
+
+            ${isTdeeMode ? `
+              <div class="box box-indigo space-y-3">
+                <div class="flex-gap">
+                  <button class="btn ${tdeeParams.gender === 'male' ? 'btn-primary' : 'btn-outline'}" data-action="toggleGender" data-gender="male">男性</button>
+                  <button class="btn ${tdeeParams.gender === 'female' ? 'btn-primary' : 'btn-outline'}" data-action="toggleGender" data-gender="female">女性</button>
+                </div>
+                <div class="grid-2">
+                  <div><label>年齡 (歲)</label><input type="number" value="${tdeeParams.age}" data-action="tdeeInput" data-field="age" data-type="num"></div>
+                  <div><label>身高 (cm)</label><input type="number" value="${tdeeParams.height}" data-action="tdeeInput" data-field="height" data-type="num"></div>
+                </div>
+                <div><label>體重 (kg)</label><input type="number" value="${tdeeParams.weight}" data-action="tdeeInput" data-field="weight" data-type="num"></div>
+                <div>
+                  <label>活動量 (PAL)</label>
+                  <select data-action="tdeeInput" data-field="pal" data-type="num">
+                    <option value="1.2" ${tdeeParams.pal==1.2?'selected':''}>1.2 - 幾乎不動</option>
+                    <option value="1.375" ${tdeeParams.pal==1.375?'selected':''}>1.375 - 輕度活動</option>
+                    <option value="1.55" ${tdeeParams.pal==1.55?'selected':''}>1.55 - 中度活動</option>
+                    <option value="1.725" ${tdeeParams.pal==1.725?'selected':''}>1.725 - 高度活動</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" data-action="calcTdee">計算並分配營養素</button>
+              </div>
+            ` : ''}
+
+            <div class="space-y-3 pt-2" style="border-top: 1px solid var(--border);">
+              <div><label>單日總熱量目標 (kcal)</label><input type="number" value="${targets.calories}" data-action="macroInput" data-field="calories" style="font-weight:bold; color:var(--primary); background:var(--primary-light);"></div>
+              <div class="box box-rose space-y-2">
+                <div class="flex-between"><label style="color:var(--rose)">1. 蛋白質</label><span class="tag" style="background:#fecdd3; color:var(--rose)">${pPct}%</span></div>
+                <input type="range" value="${pPct}" data-action="macroSlider" data-field="p" style="accent-color:var(--rose)">
+                <div class="flex-center"><input type="number" value="${targets.protein}" data-action="macroInput" data-field="protein"><span style="color:var(--rose)">g</span></div>
+              </div>
+              <div class="box box-amber space-y-2">
+                <div class="flex-between"><label style="color:var(--warning)">2. 碳水</label><span class="tag" style="background:#fde68a; color:var(--warning)">${cPct}%</span></div>
+                <input type="range" value="${cPct}" data-action="macroSlider" data-field="c" style="accent-color:var(--warning)">
+                <div class="flex-center"><input type="number" value="${targets.carbs}" data-action="macroInput" data-field="carbs"><span style="color:var(--warning)">g</span></div>
+              </div>
+              <div class="box box-emerald space-y-2">
+                <div class="flex-between"><label style="color:var(--success)">3. 脂肪</label><span class="tag" style="background:#a7f3d0; color:var(--success)">${fPct}%</span></div>
+                <input type="range" value="${fPct}" data-action="macroSlider" data-field="f" style="accent-color:var(--success)">
+                <div class="flex-center"><input type="number" value="${targets.fat}" data-action="macroInput" data-field="fat"><span style="color:var(--success)">g</span></div>
+              </div>
+            </div>
+
+            <div class="box box-sky space-y-2 pt-2" style="background:#f0f9ff; border-color:#bae6fd;">
+              <div class="flex-between"><label style="color:var(--sky)">主菜及乳品佔比 (HBV)</label><span class="tag" style="background:#bae6fd; color:var(--sky)">${hbvRatio}%</span></div>
+              <input type="range" value="${hbvRatio}" data-action="hbvSlider" style="accent-color:var(--sky)">
+            </div>
+
+            <div class="space-y-4 pt-2" style="border-top: 1px solid var(--border);">
+              <div class="space-y-2">
+                <label>正餐開關</label>
+                <div class="flex-gap">${['breakfast','lunch','dinner'].map((m,i)=>`<button class="btn ${mealsConfig[m]?'btn-primary':'btn-outline'}" style="padding:8px; font-size:0.85rem;" data-action="toggleMeal" data-meal="${m}">${mealsConfig[m]?'✅':'⬜'} ${['早餐','午餐','晚餐'][i]}</button>`).join('')}</div>
+              </div>
+              <div class="space-y-2">
+                <label>點心設定</label>
+                <div class="grid-2">${['morning','afternoon','evening'].map((s,i)=>`<button class="btn ${snacksConfig[s]?'btn-primary':'btn-outline'}" style="padding:8px; font-size:0.85rem;" data-action="toggleSnack" data-snack="${s}">${snacksConfig[s]?'✅':'⬜'} ${['早點','午點','晚點'][i]}</button>`).join('')}</div>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-3">
+              <button class="btn btn-primary" data-action="generate" style="background:#10b981;">🍽️ 一鍵生成菜單</button>
+              
+              <!-- 📥 匯入與匯出按鈕區塊 -->
+              <div class="grid-2 mt-2">
+                <button class="btn btn-outline" data-action="exportHTML" style="color:var(--success); border-color:var(--success); font-size:0.85rem; padding:8px;">📄 匯出 (HTML)</button>
+                <button class="btn btn-outline" data-action="triggerCSV" style="color:var(--sky); border-color:var(--sky); font-size:0.85rem; padding:8px;">📥 匯入食譜</button>
+                <input type="file" id="csvFileInput" accept=".csv" style="display:none;" data-action="handleCSV">
+              </div>
+              <button class="btn btn-outline mt-2" data-action="downloadTemplate" style="color:var(--text-muted); border-color:var(--border); font-size:0.8rem; padding:6px; background:var(--bg-color);">⬇️ 下載食譜 CSV 範本</button>
+              <button class="btn btn-outline mt-2" data-action="print" style="color:var(--primary); border-color:var(--primary); font-size:0.85rem; padding:8px;">🖨️ 列印 / 存為 PDF</button>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderMain = () => {
+      if (!state.generatedMenu) return `<div class="main-content"></div>`;
+      
+      const daysHtml = state.generatedMenu.map((dayData, dIdx) => `
+        <div class="day-container">
+          <div class="day-header">第 ${dayData.day} 天 <span class="day-target">目標：${state.targets.calories} kcal</span></div>
+          
+          <div class="stats-panel">
+            <div class="stats-row">
+              <div class="stat-item"><span class="stat-label">熱量</span><span class="stat-val ${Math.abs(dayData.stats.calories-state.targets.calories)>50?'warn':'ok'}">${dayData.stats.calories}<span style="font-size:0.8rem">kcal</span></span></div>
+              <div class="stat-item"><span class="stat-label">蛋白質</span><span class="stat-val">${Math.round(dayData.stats.p)}g</span></div>
+              <div class="stat-item"><span class="stat-label">脂肪</span><span class="stat-val">${Math.round(dayData.stats.f)}g</span></div>
+              <div class="stat-item"><span class="stat-label">碳水</span><span class="stat-val">${Math.round(dayData.stats.c)}g</span></div>
+            </div>
+            <div class="micro-grid">
+              <div class="micro-box"><div class="micro-label">纖維 Fiber</div><div class="micro-val">${Math.round(dayData.stats.fiber)}<span>g</span></div></div>
+              <div class="micro-box"><div class="micro-label">鈉 Na</div><div class="micro-val">${Math.round(dayData.stats.na)}<span>mg</span></div></div>
+              <div class="micro-box"><div class="micro-label">磷 Phos</div><div class="micro-val">${Math.round(dayData.stats.phos)}<span>mg</span></div></div>
+              <div class="micro-box"><div class="micro-label">鉀 K</div><div class="micro-val">${Math.round(dayData.stats.k)}<span>mg</span></div></div>
+              <div class="micro-box"><div class="micro-label">鈣 Ca</div><div class="micro-val">${Math.round(dayData.stats.ca)}<span>mg</span></div></div>
+              <div class="micro-box"><div class="micro-label">鎂 Mag</div><div class="micro-val">${Math.round(dayData.stats.mag)}<span>mg</span></div></div>
+              <div class="micro-box"><div class="micro-label">EPA</div><div class="micro-val">${Math.round(dayData.stats.epa)}<span>mg</span></div></div>
+              <div class="micro-box"><div class="micro-label">Omega-3</div><div class="micro-val">${Math.round(dayData.stats.n3)}<span>mg</span></div></div>
+              
+              <div class="micro-box" style="background:#e0f2fe; border-color:#bae6fd;"><div class="micro-label" style="color:#0284c7">Vit B12</div><div class="micro-val">${(dayData.stats.b12).toFixed(1)}<span>ug</span></div></div>
+              <div class="micro-box" style="background:#fef08a; border-color:#fde047;"><div class="micro-label" style="color:#b45309">Vit A</div><div class="micro-val">${Math.round(dayData.stats.vitA)}<span>ug</span></div></div>
+              <div class="micro-box" style="background:#dcfce7; border-color:#a7f3d0;"><div class="micro-label" style="color:#047857">葉酸</div><div class="micro-val">${Math.round(dayData.stats.folic)}<span>ug</span></div></div>
+              <div class="micro-box" style="background:#fae8ff; border-color:#bbf7d0;"><div class="micro-label" style="color:#1d4ed8">Vit D</div><div class="micro-val">${(dayData.stats.vitD).toFixed(1)}<span>ug</span></div></div>
+              
+              <div class="micro-box" style="background:#fee2e2; border-color:#fecdd3;"><div class="micro-label" style="color:#be123c">鐵 Fe</div><div class="micro-val">${(dayData.stats.fe).toFixed(1)}<span>mg</span></div></div>
+              <div class="micro-box" style="background:#ffedd5; border-color:#fed7aa;"><div class="micro-label" style="color:#c2410c">鋅 Zn</div><div class="micro-val">${(dayData.stats.zn).toFixed(1)}<span>mg</span></div></div>
+              <div class="micro-box" style="background:#f3e8ff; border-color:#f5d0fe;"><div class="micro-label" style="color:#7e22ce">硒 Se</div><div class="micro-val">${(dayData.stats.se).toFixed(1)}<span>ug</span></div></div>
+            </div>
+          </div>
+
+          <div class="meals-grid">
+            ${dayData.meals.map((meal, mIdx) => {
+              if (!meal.isMain) {
+                return `
+                  <div class="meal-card snack">
+                    <div class="meal-title" style="color: var(--orange)">${meal.name}</div>
+                    <ul class="food-list">
+                      ${meal.items.map((item, iIdx) => `
+                        <li class="food-item">
+                          <div class="food-row">
+                            <div class="food-left">
+                              <span>${getIconForType(item.type)}</span>
+                              <span class="tag tag-method" style="background:#ffedd5;color:#c2410c">${getLabelForType(item.type)}</span>
+                              <select class="inline-select" data-action="snackChange" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}">${buildOptions(item.name)}</select>
+                            </div>
+                            <div class="food-right">
+                              <input type="number" class="inline-input" value="${item.weight||''}" data-action="snackWeightChange" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}">
+                              <span class="weight-hint">約 ${(item.weight/(item.uW||1)).toFixed(1).replace('.0','')} ${item.unit}</span>
+                              <button class="del-btn print-hidden" data-action="removeExtra" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}">✖</button>
+                            </div>
+                          </div>
+                        </li>
+                      `).join('')}
+                      <li class="print-hidden"><select class="add-select inline-select" style="background:#ffedd5; color:#c2410c; border-color:#fb923c" data-action="addExtra" data-day="${dIdx}" data-meal="${mIdx}"><option value="" disabled selected hidden>➕ 加入點心...</option>${buildOptions('')}</select></li>
+                    </ul>
+                  </div>
+                `;
+              }
+
+              const renderCat = (cat, label, icon) => {
+                if (!meal[cat]) return '';
+                const m = meal[cat];
+                return `
+                  <li class="food-item">
+                    <div class="food-row">
+                      <div class="food-left">
+                        <span>${icon}</span>
+                        <select class="tag-method-select" data-action="methodChange" data-day="${dIdx}" data-meal="${mIdx}" data-cat="${cat}" title="點擊修改烹調方式">
+                          ${COOKING_METHODS.includes(m.method) ? '' : `<option value="${m.method}" selected>${m.method}</option>`}
+                          ${COOKING_METHODS.map(method => `<option value="${method}" ${method === m.method ? 'selected' : ''}>${method}</option>`).join('')}
+                        </select>
+                        <select class="inline-select" data-action="itemChange" data-day="${dIdx}" data-meal="${mIdx}" data-cat="${cat}">${buildCategorySelect(cat, m.item.name)}</select>
+                      </div>
+                      <div class="food-right">
+                        <input type="number" class="inline-input" value="${m.weight||''}" data-action="weightChange" data-day="${dIdx}" data-meal="${mIdx}" data-cat="${cat}">
+                        <span class="weight-hint">約 ${(m.weight/(m.item.uW||1)).toFixed(1).replace('.0','')} ${m.item.unit}</span>
+                        <button class="del-btn print-hidden" data-action="removeCat" data-day="${dIdx}" data-meal="${mIdx}" data-cat="${cat}">✖</button>
+                      </div>
+                    </div>
+                    ${m.oil > 0 ? `<div class="oil-row">💧用油: <input type="number" class="oil-input" value="${m.oil}" data-action="oilChange" data-day="${dIdx}" data-meal="${mIdx}" data-cat="${cat}"> g <span style="opacity:0.7">(${(m.oil/5).toFixed(1).replace('.0','')} 茶匙 ${meal.oilName})</span></div>` : ''}
+                  </li>
+                `;
+              };
+
+              return `
+                <div class="meal-card main">
+                  <div class="meal-title" style="color: var(--primary)">${meal.name}</div>
+                  <ul class="food-list">
+                    ${renderCat('carb', '主食', '🌾')}
+                    ${renderCat('protein', '蛋白質', '🐟')}
+                    ${renderCat('side', '副菜', '🍳')}
+                    ${renderCat('veggie', '蔬菜', '🥬')}
+                    
+                    ${meal.extra ? meal.extra.map((item, iIdx) => {
+                      const needsCooking = ['carbs', 'proteins', 'sides', 'veggies'].includes(item.type);
+                      
+                      return `
+                      <li class="food-item extra">
+                        <div class="food-row">
+                          <div class="food-left">
+                            <span>${getIconForType(item.type)}</span>
+                            ${needsCooking ? `
+                              <select class="tag-method-select" data-action="extraMethodChange" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}" title="點擊切換烹調方式">
+                                ${COOKING_METHODS.includes(item.method) ? '' : `<option value="${item.method}" selected>${item.method}</option>`}
+                                ${COOKING_METHODS.map(method => `<option value="${method}" ${method === item.method ? 'selected' : ''}>${method}</option>`).join('')}
+                              </select>
+                            ` : `
+                              <span class="tag tag-extra">附餐</span>
+                            `}
+                            <select class="inline-select" data-action="extraChange" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}">${buildOptions(item.name)}</select>
+                          </div>
+                          <div class="food-right">
+                            <input type="number" class="inline-input" value="${item.weight||''}" data-action="snackWeightChange" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}">
+                            <span class="weight-hint">約 ${(item.weight/(item.uW||1)).toFixed(1).replace('.0','')} ${item.unit}</span>
+                            <button class="del-btn print-hidden" data-action="removeExtra" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}">✖</button>
+                          </div>
+                        </div>
+                        ${needsCooking && item.oil > 0 ? `<div class="oil-row">💧用油: <input type="number" class="oil-input" value="${item.oil}" data-action="extraOilChange" data-day="${dIdx}" data-meal="${mIdx}" data-idx="${iIdx}"> g <span style="opacity:0.7">(${(item.oil/5).toFixed(1).replace('.0','')} 茶匙 ${meal.oilName})</span></div>` : ''}
+                      </li>
+                      `;
+                    }).join('') : ''}
+                    <li class="print-hidden"><select class="add-select inline-select" data-action="addExtra" data-day="${dIdx}" data-meal="${mIdx}"><option value="" disabled selected hidden>➕ 加入自訂食材...</option>${buildOptions('')}</select></li>
+                  </ul>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      return `<div class="main-content">${daysHtml}</div>`;
+    };
+
+    const renderApp = () => {
+      document.getElementById('app').innerHTML = `
+        <div class="header">
+          <h1>📊 進階臨床營養菜單生成器</h1>
+          <p class="print-hidden">全自訂巨量與微量營養素，支援 CSV 食譜匯入 (100% 離線版)</p>
+        </div>
+        <div class="layout">
+          ${renderSidebar()}
+          ${renderMain()}
+        </div>
+      `;
+    };
+
+    // --- 事件代理 (Event Delegation) ---
+    const updateMenuData = (dayIdx, mealIdx, updateFn) => {
+      if (!state.generatedMenu) return;
+      const meal = state.generatedMenu[dayIdx].meals[mealIdx];
+      updateFn(meal);
+      state.generatedMenu[dayIdx].stats = calculateTotalStats(state.generatedMenu[dayIdx].meals);
+      renderApp();
+    };
+
+    document.addEventListener('change', (e) => {
+      const ds = e.target.dataset;
+      if (!ds || !ds.action) return;
+      const val = e.target.value;
+
+      // 📥 CSV 匯入核心引擎
+      if (ds.action === 'handleCSV' && e.target.id === 'csvFileInput') {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          try {
+            const text = evt.target.result;
+            const lines = text.split('\n');
+            let importCount = 0;
+            for (let i = 2; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(s => s.replace(/^"|"$/g, '').trim());
+              if (cols.length < 4) continue;
+              
+              const cat = cols[0]; 
+              if (FOOD_DB[cat]) {
+                const newItem = {
+                  name: cols[1], unit: cols[2], uW: parseFloat(cols[3]) || 100,
+                  c: parseFloat(cols[4]) || 0, p: parseFloat(cols[5]) || 0, f: parseFloat(cols[6]) || 0,
+                  fiber: parseFloat(cols[7]) || 0, na: parseFloat(cols[8]) || 0, k: parseFloat(cols[9]) || 0,
+                  phos: parseFloat(cols[10]) || 0, ca: parseFloat(cols[11]) || 0, mag: parseFloat(cols[12]) || 0,
+                  epa: parseFloat(cols[13]) || 0, n3: parseFloat(cols[14]) || 0, b12: parseFloat(cols[15]) || 0,
+                  vitA: parseFloat(cols[16]) || 0, folic: parseFloat(cols[17]) || 0, vitD: parseFloat(cols[18]) || 0,
+                  fe: parseFloat(cols[19]) || 0, zn: parseFloat(cols[20]) || 0, se: parseFloat(cols[21]) || 0
+                };
+                FOOD_DB[cat].push(newItem);
+                importCount++;
+              }
+            }
+            alert(`✅ 成功匯入 ${importCount} 筆自訂食材！\n這些食材已加入下拉選單與隨機題庫中。`);
+            renderApp();
+          } catch(err) {
+            alert('❌ 匯入失敗，請確認 CSV 檔案格式是否正確。');
+          }
+          e.target.value = ''; 
+        };
+        reader.readAsText(file, 'UTF-8');
+      }
+      else if (ds.action === 'macroInput') {
+        const v = parseFloat(val) >= 0 ? parseFloat(val) : 0;
+        let { calories, protein, carbs, fat } = state.targets;
+        if (ds.field === 'calories') { calories = v; fat = (calories-protein*4-carbs*4)/9; if(fat<0){fat=0; carbs=(calories-protein*4)/4; if(carbs<0){carbs=0;protein=calories/4;}} }
+        else if (ds.field === 'protein') { protein = v; fat = (calories-protein*4-carbs*4)/9; if(fat<0){fat=0; carbs=(calories-protein*4)/4; if(carbs<0){carbs=0;calories=protein*4;}} }
+        else if (ds.field === 'carbs') { carbs = v; fat = (calories-protein*4-carbs*4)/9; if(fat<0){fat=0;calories=protein*4+carbs*4;} }
+        else if (ds.field === 'fat') { fat = v; carbs = (calories-protein*4-fat*9)/4; if(carbs<0){carbs=0;calories=protein*4+fat*9;} }
+        state.targets = { calories: Math.round(calories), protein: Math.round(protein*10)/10, carbs: Math.round(carbs*10)/10, fat: Math.round(fat*10)/10 };
+        renderApp();
+      } 
+      else if (ds.action === 'tdeeInput') {
+        state.tdeeParams[ds.field] = ds.type === 'num' ? Number(val) : val;
+        renderApp();
+      }
+      else if (ds.action === 'itemChange') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          meal[ds.cat] = { ...meal[ds.cat] };
+          const dbMap = { carb: 'carbs', protein: 'proteins', side: 'sides', veggie: 'veggies' };
+          meal[ds.cat].item = FOOD_DB[dbMap[ds.cat]].find(i => i.name === val);
+          
+          const { c: tC, p: tP, f: tF, mainP: tMainP } = meal.targets;
+          const pI = meal.protein?.item; const cI = meal.carb?.item; const sI = meal.side?.item; const vI = meal.veggie?.item;
+          let vW = meal.veggie ? 100 : 0; let pW = (pI && pI.p > 0) ? Math.max(0, tMainP/pI.p) : 0;
+          let C_rem = tC - (vI ? vI.c*vW : 0); let P_rem = tP - (vI ? vI.p*vW : 0) - (pI ? pI.p*pW : 0);
+          let sW = 0; let cW = 0;
+          
+          if (sI && cI) {
+            const ratio = (cI.c > 0) ? (cI.p/cI.c) : 0; const denom = sI.p - (sI.c*ratio);
+            if (denom > 0.001) { sW = (P_rem - C_rem*ratio)/denom; if (sW < 0) sW = 0; } else { sW = Math.max(0, P_rem/(sI.p||1)); }
+            cW = (C_rem - sW*sI.c)/(cI.c||1); if (cW < 0) { cW = 0; sW = Math.max(0, P_rem/(sI.p||1)); }
+          } else if (sI && !cI) { sW = Math.max(0, P_rem/(sI.p||1)); } else if (!sI && cI) { cW = Math.max(0, C_rem/(cI.c||1)); }
+
+          if(meal.protein) meal.protein.weight = Math.round(pW); if(meal.side) meal.side.weight = Math.round(sW);
+          if(meal.carb) meal.carb.weight = Math.round(cW); if(meal.veggie) meal.veggie.weight = Math.round(vW);
+
+          const curFat = (vI?vI.f*vW:0) + (cI?cI.f*cW:0) + (pI?pI.f*pW:0) + (sI?sI.f*sW:0);
+          const oI = FOOD_DB.oils.find(o => o.name === meal.oilName); let oW = Math.max(0, (tF - curFat)/oI.f);
+          let remOil = Math.round(oW); const acts = [];
+          if(meal.carb) acts.push('carb'); if(meal.protein) acts.push('protein'); if(meal.side) acts.push('side'); if(meal.veggie) acts.push('veggie');
+          if(acts.length>0) {
+            acts.forEach(c => meal[c].oil=0); while(remOil>0) { meal[acts[Math.floor(Math.random()*acts.length)]].oil++; remOil--; }
+            acts.forEach(c => { meal[c].method = getRandom(getCookingMethod(meal[c].oil, c==='side'?'sides':c==='veggie'?'veggies':c==='carb'?'carbs':'proteins', meal[c].item.name)); });
+          }
+        });
+      }
+      else if (ds.action === 'snackChange' || ds.action === 'extraChange') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          let found = null; let fType = '';
+          for(const grp of ALL_OPTIONS) { const m = grp.options.find(i=>i.name===val); if(m){found=m; fType=grp.type; break;} }
+          if(!found) return;
+          const arr = meal.isMain ? meal.extra : meal.items;
+          
+          const newItem = { ...found, weight: found.uW||100, type: fType };
+          if (meal.isMain && ['carbs', 'proteins', 'sides', 'veggies'].includes(fType)) {
+             newItem.oil = 0;
+             const mapCat = fType === 'carbs' ? 'carbs' : fType === 'proteins' ? 'proteins' : fType === 'sides' ? 'sides' : 'veggies';
+             newItem.method = getRandom(getCookingMethod(0, mapCat, newItem.name));
+          }
+          arr[ds.idx] = newItem;
+        });
+      }
+      else if (ds.action === 'weightChange') { updateMenuData(ds.day, ds.meal, meal => { meal[ds.cat].weight = val===''?0:Number(val); }); }
+      else if (ds.action === 'snackWeightChange') { updateMenuData(ds.day, ds.meal, meal => { const arr = meal.isMain ? meal.extra : meal.items; arr[ds.idx].weight = val===''?0:Number(val); }); }
+      else if (ds.action === 'oilChange') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          meal[ds.cat].oil = val===''?0:Number(val);
+          const mapCat = ds.cat==='carb'?'carbs':ds.cat==='protein'?'proteins':ds.cat==='side'?'sides':'veggies';
+          meal[ds.cat].method = getRandom(getCookingMethod(Number(val)||0, mapCat, meal[ds.cat].item.name));
+        });
+      }
+      // 加點的獨立油量計算
+      else if (ds.action === 'extraOilChange') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          const item = meal.extra[ds.idx];
+          item.oil = val === '' ? 0 : Number(val);
+          const mapCat = item.type === 'carbs' ? 'carbs' : item.type === 'proteins' ? 'proteins' : item.type === 'sides' ? 'sides' : 'veggies';
+          item.method = getRandom(getCookingMethod(Number(val)||0, mapCat, item.name));
+        });
+      }
+      else if (ds.action === 'methodChange') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          meal[ds.cat].method = val;
+          meal[ds.cat].oil = getOilGramsForMethod(val); 
+        });
+      }
+      // 加點的獨立烹調計算
+      else if (ds.action === 'extraMethodChange') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          const item = meal.extra[ds.idx];
+          item.method = val;
+          item.oil = getOilGramsForMethod(val); 
+        });
+      }
+      else if (ds.action === 'addExtra') {
+        updateMenuData(ds.day, ds.meal, meal => {
+          let found = null; let fType = '';
+          for(const grp of ALL_OPTIONS) { const m = grp.options.find(i=>i.name===val); if(m){found=m; fType=grp.type; break;} }
+          if(!found) return;
+          const newItem = { ...found, weight: found.uW||100, type: fType };
+          
+          if (['carbs', 'proteins', 'sides', 'veggies'].includes(fType)) {
+             newItem.oil = 0; 
+             const mapCat = fType === 'carbs' ? 'carbs' : fType === 'proteins' ? 'proteins' : fType === 'sides' ? 'sides' : 'veggies';
+             newItem.method = getRandom(getCookingMethod(0, mapCat, newItem.name));
+          }
+
+          if(meal.isMain) { if(!meal.extra) meal.extra=[]; meal.extra.push(newItem); } else { if(!meal.items) meal.items=[]; meal.items.push(newItem); }
+        });
+      }
+    });
+
+    document.addEventListener('input', (e) => {
+      const ds = e.target.dataset;
+      if(ds.action === 'macroSlider') {
+        const field = ds.field; const newPct = parseInt(e.target.value);
+        let cals = state.targets.calories; if(!cals) return;
+        let p = Math.round((state.targets.protein*4/cals)*100)||0; let c = Math.round((state.targets.carbs*4/cals)*100)||0; let f = 100-p-c; if(f<0) f=0;
+        let diff = newPct - (field==='p'?p:field==='c'?c:f);
+        if(field==='p'){ p=newPct; if(c-diff>=0)c-=diff; else{let rem=diff-c; c=0; f-=rem;} }
+        else if(field==='c'){ c=newPct; if(f-diff>=0)f-=diff; else{let rem=diff-f; f=0; p-=rem;} }
+        else if(field==='f'){ f=newPct; if(c-diff>=0)c-=diff; else{let rem=diff-c; c=0; p-=rem;} }
+        p=Math.max(0,Math.min(100,p)); c=Math.max(0,Math.min(100,c)); f=Math.max(0,Math.min(100,f));
+        state.targets = { calories: cals, protein: Math.round((cals*(p/100))/4*10)/10, carbs: Math.round((cals*(c/100))/4*10)/10, fat: Math.round((cals*(f/100))/9*10)/10 };
+        renderApp();
+      }
+      else if(ds.action === 'daysSlider') { state.numDays = parseInt(e.target.value); renderApp(); }
+      else if(ds.action === 'hbvSlider') { state.hbvRatio = parseInt(e.target.value); renderApp(); }
+    });
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const ds = btn.dataset;
+
+      if (ds.action === 'toggleMode') { state.isTdeeMode = ds.mode === 'tdee'; renderApp(); }
+      else if (ds.action === 'toggleGender') { state.tdeeParams.gender = ds.gender; renderApp(); }
+      else if (ds.action === 'calcTdee') {
+        const { gender, age, height, weight, pal } = state.tdeeParams;
+        let bmr = gender === 'male' ? (10*weight)+(6.25*height)-(5*age)+5 : (10*weight)+(6.25*height)-(5*age)-161;
+        const tdee = Math.round(bmr * pal);
+        state.targets = { calories: tdee, protein: Math.round((tdee*0.3)/4), fat: Math.round((tdee*0.3)/9), carbs: Math.round((tdee*0.4)/4) };
+        renderApp();
+      }
+      else if (ds.action === 'toggleMeal') {
+        const next = { ...state.mealsConfig, [ds.meal]: !state.mealsConfig[ds.meal] };
+        if(next.breakfast||next.lunch||next.dinner) { state.mealsConfig = next; renderApp(); }
+      }
+      else if (ds.action === 'toggleSnack') { state.snacksConfig[ds.snack] = !state.snacksConfig[ds.snack]; renderApp(); }
+      else if (ds.action === 'generate') { generateMenu(); }
+      else if (ds.action === 'removeCat') { updateMenuData(ds.day, ds.meal, meal => { meal[ds.cat] = null; }); }
+      else if (ds.action === 'removeExtra') { updateMenuData(ds.day, ds.meal, meal => { const arr = meal.isMain?meal.extra:meal.items; arr.splice(ds.idx, 1); }); }
+      
+      else if (ds.action === 'triggerCSV') {
+        document.getElementById('csvFileInput').click();
+      }
+      
+      else if (ds.action === 'downloadTemplate') {
+        const template = "\uFEFF類別碼,食材名稱,單位,單位重量(g),碳水(c),蛋白質(p),脂肪(f),纖維(fiber),鈉(na),鉀(k),磷(phos),鈣(ca),鎂(mag),EPA(epa),Omega3(n3),維生素B12(b12),維生素A(vitA),葉酸(folic),維生素D(vitD),鐵(fe),鋅(zn),硒(se)\n" +
+                         "★必填(不可改):,carbs(主食)/proteins(蛋白質)/sides(副菜)/veggies(蔬菜)/snackCarbs(點心)/dairy(乳品)/fruits(水果),,,,,★以下營養素請填寫【每 1 公克】的數值(可填0),,,,,,,,,,,,,,,\n" +
+                         "carbs,特製胚芽紫米飯(範例),碗,160,0.25,0.04,0.01,0.02,0.02,1.5,1.0,0.1,0.5,0,0,0,0,0.1,0,0.01,0.01,0.01";
+        const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); 
+        link.href = url; link.download = '食材匯入範本_DietGenerator.csv'; link.click(); URL.revokeObjectURL(url);
+      }
+      
+      else if (ds.action === 'exportHTML') {
+        const originalElement = document.querySelector('.main-content');
+        if(!originalElement) return;
+        const clone = originalElement.cloneNode(true);
+
+        const originalSelects = originalElement.querySelectorAll('select');
+        clone.querySelectorAll('select').forEach((clonedSelect, index) => {
+          const originalVal = originalSelects[index].value;
+          Array.from(clonedSelect.options).forEach(opt => {
+            if (opt.value === originalVal) opt.setAttribute('selected', 'selected');
+            else opt.removeAttribute('selected');
+          });
+        });
+
+        const originalInputs = originalElement.querySelectorAll('input');
+        clone.querySelectorAll('input').forEach((clonedInput, index) => {
+          clonedInput.setAttribute('value', originalInputs[index].value);
+        });
+
+        clone.querySelectorAll('.print-hidden').forEach(el => el.remove());
+
+        const htmlContent = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>專屬營養菜單 (${state.numDays}天)</title>
+  <style>
+    ${document.querySelector('style').innerHTML}
+    body { background: white; padding: 2rem; max-width: 1000px; margin: 0 auto; }
+    .main-content { gap: 10px; }
+    .meal-card { break-inside: avoid; border: 1px solid #ccc; background: white !important; }
+    .stats-panel { border: 1px solid #ccc; }
+    select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; pointer-events: none; color: inherit; }
+    input { border: none !important; background: transparent !important; pointer-events: none; color: inherit; }
+    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .tag-method-select { border: none !important; pointer-events: none; padding: 0 !important; } 
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 專屬進階臨床營養菜單</h1>
+    <p>共 ${state.numDays} 天的客製化飲食計畫</p>
+  </div>
+  ${clone.outerHTML}
+</body>
+</html>`;
+
+        const url = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html;charset=utf-8' }));
+        const link = document.createElement('a'); 
+        link.href = url; link.download = `專屬營養菜單_${state.numDays}天.html`; link.click(); URL.revokeObjectURL(url);
+      }
+      else if (ds.action === 'print') {
+        window.print();
+      }
+    });
+
+    renderApp();
+    generateMenu();
+  </script>
+</body>
+</html>

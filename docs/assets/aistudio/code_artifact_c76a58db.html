@@ -1,0 +1,2672 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>台灣食材營養速查寶典 (TFDA × DRIs 雲端連動版)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons CDN -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .touch-press:active {
+      transform: scale(0.97);
+      transition: transform 0.08s ease;
+    }
+    .shadow-2xs {
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    }
+    .shadow-xs {
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08);
+    }
+    .backdrop-blur-xs {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col items-center justify-start pb-20 select-none">
+
+  <!-- Mobile Screen Container -->
+  <div class="w-full max-w-md min-h-screen bg-slate-50 flex flex-col shadow-2xl relative">
+    
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+          <i class="ph ph-leaf"></i>
+        </div>
+        <div>
+          <h1 class="text-sm font-black tracking-tight text-slate-900 leading-tight">台灣食材速查寶典</h1>
+          <p class="text-[10px] text-emerald-700 font-bold">TFDA 雲端試算表 × DRIs 動態標準</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-1.5">
+        <!-- DRIs Profile Button -->
+        <button id="btnOpenProfileModal" class="touch-press px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center space-x-1 text-xs font-bold transition">
+          <i class="ph ph-user-circle text-emerald-600 text-sm"></i>
+          <span id="headerProfileLabel">成年女性</span>
+        </button>
+
+        <!-- Cloud Sync Indicator Badge -->
+        <span id="headerCloudBadge" class="hidden px-2 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1" title="Google 試算表雲端資料庫已連線">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="headerCloudCountText">雲端庫</span>
+        </span>
+
+        <!-- Official DB Download Info Button -->
+        <button id="btnOpenDbFileModal" class="touch-press p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold transition" title="TFDA 資料庫檔案與 Google 試算表同步">
+          <i class="ph ph-database text-amber-600 text-base"></i>
+        </button>
+      </div>
+    </header>
+
+    <main id="tabContentSearch" class="flex-1 p-3.5 space-y-3 tab-panel">
+      <!-- Search and Filter Bar -->
+      <div class="space-y-2">
+        <div class="relative">
+          <input 
+            type="text" 
+            id="inputFoodSearch" 
+            placeholder="搜尋食材（連線後支援所有雲端食材檢索）" 
+            class="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-9 pr-8 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none placeholder-slate-400 font-medium shadow-2xs"
+          />
+          <i class="ph ph-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+          <button id="btnClearSearch" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+            <i class="ph ph-x-circle text-base"></i>
+          </button>
+        </div>
+
+        <!-- Dynamic Category Filter Bar (Auto-extracted from DB) -->
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+          <span class="font-bold flex items-center gap-1">
+            <i class="ph ph-squares-four text-emerald-600"></i>
+            <span>資料庫分類（支援多選）：</span>
+          </span>
+          <span id="searchCatCountBadge" class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">載入中...</span>
+        </div>
+        <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1 text-xs" id="searchCategoryPillsContainer">
+          <!-- Dynamically generated from active database -->
+        </div>
+
+        <!-- Quick Nutrient Sort Chips -->
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+          <span class="font-bold flex items-center gap-1">
+            <i class="ph ph-funnel text-emerald-600"></i>
+            <span>營養素排序（再次點擊取消）：</span>
+          </span>
+          <span id="sortNoticeText" class="text-[10px] text-slate-400">依資料庫原序</span>
+        </div>
+        <div class="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5" id="sortNutrientPillContainer">
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="pro">💪 高蛋白</button>
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="ca">🦴 高鈣</button>
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="fe">🩸 高鐵</button>
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="fiber">🥬 高纖</button>
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="vitC">🍊 維生素C</button>
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="lowKcal">🥗 低卡熱量</button>
+          <button class="sort-chip flex-shrink-0 px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 transition" data-sort="lowNa">💧 低鈉</button>
+        </div>
+      </div>
+
+      <!-- Food List Container -->
+      <div id="foodListContainer" class="space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+    </main>
+
+    <main id="tabContentRank" class="flex-1 p-3.5 space-y-3 tab-panel hidden">
+      <!-- Baseline Customizer Card -->
+      <div class="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white border border-amber-300/80 rounded-2xl p-3 shadow-2xs space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs">
+              <i class="ph ph-faders"></i>
+            </span>
+            <span class="text-xs font-black text-slate-800">排行榜自訂換算基準與數值</span>
+          </div>
+          <span id="rankBaseDescBadge" class="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-md">
+            每 100 g 重量基準
+          </span>
+        </div>
+
+        <!-- Baseline Dimension Selector -->
+        <div class="grid grid-cols-5 gap-1 text-[11px] font-bold bg-slate-100/90 p-1 rounded-xl border border-slate-200/80">
+          <button class="rank-dim-btn active py-1.5 rounded-lg bg-white text-amber-800 shadow-xs text-center transition" data-dim="gram">⚖️ 重量</button>
+          <button class="rank-dim-btn py-1.5 rounded-lg text-slate-600 text-center transition" data-dim="kcal">🔥 熱量</button>
+          <button class="rank-dim-btn py-1.5 rounded-lg text-slate-600 text-center transition" data-dim="pro">💪 蛋白質</button>
+          <button class="rank-dim-btn py-1.5 rounded-lg text-slate-600 text-center transition" data-dim="cho">🍚 碳水</button>
+          <button class="rank-dim-btn py-1.5 rounded-lg text-slate-600 text-center transition" data-dim="fat">🥑 脂肪</button>
+        </div>
+
+        <!-- Custom Number Input & Preset Chips -->
+        <div class="flex items-center justify-between gap-2 pt-0.5">
+          <div class="flex items-center space-x-1 overflow-x-auto no-scrollbar" id="rankDimPresetsContainer">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="flex items-center space-x-1">
+            <input 
+              type="number" 
+              id="inputRankCustomBaseVal" 
+              value="100" 
+              min="0.1" 
+              step="any"
+              class="w-16 text-center font-black text-slate-900 bg-white border border-slate-200 rounded-lg py-1 px-1 text-xs focus:ring-2 focus:ring-amber-400 focus:outline-none shadow-2xs"
+            />
+            <span id="labelRankCustomBaseUnit" class="text-xs font-bold text-slate-700 min-w-[20px]">g</span>
+          </div>
+        </div>
+
+        <p id="rankBaseExplText" class="text-[10px] text-slate-500 leading-tight">
+          基準：以食材每 100 g 可食部位直接排名。
+        </p>
+      </div>
+
+      <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2 relative">
+        <div class="flex items-center justify-between text-[11px] text-slate-500">
+          <span class="font-bold flex items-center gap-1 text-slate-800">
+            <i class="ph ph-squares-four text-amber-600 text-sm"></i>
+            <span>資料庫分類（支援多選）：</span>
+          </span>
+          <span id="rankCatSelectedSummaryBadge" class="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-bold">
+            全部食材
+          </span>
+        </div>
+
+        <!-- Horizontal Scrollable Multi-select Category Pills -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-1 text-xs" id="rankCategoryPillsContainer">
+          <!-- Dynamically populated from active database -->
+        </div>
+
+        <!-- Sort Direction Selector -->
+        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-600 text-[11px] flex items-center gap-1">
+            <i class="ph ph-sort-ascending text-amber-600"></i>
+            <span>排序方式：</span>
+          </span>
+          <select id="selectRankSortOrder" class="text-xs font-bold p-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-500">
+            <option value="desc" selected>⬇️ 由高到低 (降冪)</option>
+            <option value="asc">⬆️ 由低到高 (升冪)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Min / Max Range Filter Card -->
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+        <div class="flex items-center justify-between text-[11px] font-bold text-slate-700">
+          <span class="flex items-center gap-1">
+            <i class="ph ph-sliders-horizontal text-amber-600"></i>
+            <span>數值範圍篩選（上下限，不設則留空）：</span>
+          </span>
+          <button id="btnResetRankRange" class="text-[10px] text-amber-700 hover:underline">清除範圍</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex items-center space-x-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-500 min-w-[28px]">下限:</span>
+            <input 
+              type="number" 
+              id="inputRankMinVal" 
+              placeholder="不設" 
+              step="any"
+              class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+          <div class="flex items-center space-x-1.5 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-500 min-w-[28px]">上限:</span>
+            <input 
+              type="number" 
+              id="inputRankMaxVal" 
+              placeholder="不設" 
+              step="any"
+              class="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <div class="flex items-center justify-between px-1">
+          <span class="text-[11px] font-bold text-slate-700">選擇排行營養素（顯示前 20 種）：</span>
+          <span class="text-[10px] text-slate-400">點擊按鈕或完整下拉選單</span>
+        </div>
+
+        <!-- Quick 8 Nutrient Buttons Grid -->
+        <div class="grid grid-cols-4 gap-1.5 text-[11px] font-bold">
+          <button class="rank-tab-btn active p-2 rounded-xl border border-amber-500 bg-amber-50 text-amber-800 text-center touch-press transition" data-rank="ca">🦴 鈣質</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="fe">🩸 鐵質</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="pro">💪 蛋白質</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="fiber">🥬 膳食纖維</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="vitC">🍊 維生素C</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="k">⚡ 鉀離子</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="zn">🛡️ 鋅元素</button>
+          <button class="rank-tab-btn p-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-center touch-press transition" data-rank="vitA">👁️ 維生素A</button>
+        </div>
+
+        <!-- Full Comprehensive Nutrients Dropdown -->
+        <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+          <label for="selectRankOtherNutrient" class="text-[10px] font-bold text-slate-700 flex items-center gap-1">
+            <i class="ph ph-list-magnifying-glass text-amber-600"></i>
+            <span>TFDA 食品資料庫全項檢驗指標完整清單（包含三大營養素）：</span>
+          </label>
+          <select id="selectRankOtherNutrient" class="w-full text-xs font-semibold p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-amber-500">
+            <option value="" disabled selected>-- 點擊展開選擇資料庫中所有營養項目 --</option>
+            
+            <optgroup label="🥩 三大營養素與能量代謝 (Macronutrients)">
+              <option value="pro">粗蛋白質 (Crude Protein, g)</option>
+              <option value="fat">粗脂肪 (Crude Fat, g)</option>
+              <option value="cho">總碳水化合物 (Carbohydrate, g)</option>
+              <option value="fiber">膳食纖維 (Dietary Fiber, g)</option>
+              <option value="sugar">糖質總量 (Total Sugars, g)</option>
+              <option value="kcal">熱量密度 (高卡 kcal)</option>
+              <option value="lowKcal">熱量密度 (低卡 kcal)</option>
+            </optgroup>
+
+            <optgroup label="🧈 脂質與脂肪酸分析 (Fatty Acids & Lipids)">
+              <option value="satFat">飽和脂肪酸 (SFA, g)</option>
+              <option value="mufa">單元不飽和脂肪酸 (MUFA, g)</option>
+              <option value="pufa">多元不飽和脂肪酸 (PUFA, g)</option>
+              <option value="chol">膽固醇 (Cholesterol, mg)</option>
+            </optgroup>
+
+            <optgroup label="💧 一般成分與基本物性 (General Components)">
+              <option value="water">水分含量 (Water, g)</option>
+              <option value="ash">灰分含量 (Ash, g)</option>
+            </optgroup>
+
+            <optgroup label="⛏️ 礦物質與微量元素 (Minerals & Elements)">
+              <option value="ca">鈣質 (Calcium, mg)</option>
+              <option value="fe">鐵質 (Iron, mg)</option>
+              <option value="zn">鋅元素 (Zinc, mg)</option>
+              <option value="mg">鎂 (Magnesium, mg)</option>
+              <option value="k">鉀離子 (Potassium, mg)</option>
+              <option value="p">磷 (Phosphorus, mg)</option>
+              <option value="na">高鈉含量 (Sodium, mg)</option>
+              <option value="lowNa">低鈉無負擔 (Sodium, mg)</option>
+              <option value="cu">銅 (Copper, mg)</option>
+              <option value="mn">錳 (Manganese, mg)</option>
+            </optgroup>
+
+            <optgroup label="💊 維生素群 (Vitamins)">
+              <option value="vitC">維生素 C (Ascorbic Acid, mg)</option>
+              <option value="vitA">維生素 A 總量 (Vitamin A, ug RAE)</option>
+              <option value="folate">葉酸 (Folate, mcg)</option>
+              <option value="vitD">維生素 D (Vitamin D, ug)</option>
+              <option value="vitE">維生素 E (Vitamin E, mg)</option>
+              <option value="vitB1">維生素 B1 (Thiamin, mg)</option>
+              <option value="vitB2">維生素 B2 (Riboflavin, mg)</option>
+              <option value="niacin">菸鹼素 (Niacin, mg)</option>
+              <option value="vitB6">維生素 B6 (Pyridoxine, mg)</option>
+              <option value="vitB12">維生素 B12 (Cobalamin, ug)</option>
+              <option value="alphaCaro">α-胡蘿蔔素 (Alpha-Carotene, ug)</option>
+              <option value="betaCaro">β-胡蘿蔔素 (Beta-Carotene, ug)</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <!-- Leaderboard List (Top 20) -->
+      <div id="rankListContainer" class="space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+    </main>
+
+    <main id="tabContentCompare" class="flex-1 p-3.5 space-y-3.5 tab-panel hidden">
+      <!-- Compare Slots Header & Swap -->
+      <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">
+              <i class="ph ph-scales"></i>
+            </span>
+            <span class="text-xs font-black text-slate-800">雙食材全指標 PK 對比</span>
+          </div>
+          
+          <button id="btnSwapCompareSlots" class="touch-press px-2 py-0.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-bold text-indigo-700 hover:bg-indigo-50 flex items-center space-x-1">
+            <i class="ph ph-arrows-left-right"></i>
+            <span>左右對調</span>
+          </button>
+        </div>
+
+        <!-- Mode Toggle: Custom vs 100g -->
+        <div class="flex items-center justify-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+          <button id="btnCompModeCustom" class="w-1/2 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs transition text-center">
+            依自訂設定份量
+          </button>
+          <button id="btnCompMode100g" class="w-1/2 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition text-center">
+            統一每 100g 基準
+          </button>
+        </div>
+
+        <!-- Slots Selector -->
+        <div class="grid grid-cols-2 gap-2">
+          <!-- Slot A -->
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black text-indigo-700 uppercase tracking-wider">選手 A</span>
+              <span id="compSlotAPortionBadge" class="text-[9px] font-bold bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded">100g</span>
+            </div>
+            <select id="selectCompareFoodA" class="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-1.5 text-slate-800 focus:outline-none focus:border-indigo-500 truncate">
+              <!-- Rendered dynamically -->
+            </select>
+            <p id="compSlotAConditionDesc" class="text-[9px] text-slate-400 truncate">基準：100克</p>
+          </div>
+
+          <!-- Slot B -->
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black text-amber-700 uppercase tracking-wider">選手 B</span>
+              <span id="compSlotBPortionBadge" class="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded">100g</span>
+            </div>
+            <select id="selectCompareFoodB" class="w-full text-xs font-bold bg-white border border-slate-200 rounded-lg p-1.5 text-slate-800 focus:outline-none focus:border-amber-500 truncate">
+              <!-- Rendered dynamically -->
+            </select>
+            <p id="compSlotBConditionDesc" class="text-[9px] text-slate-400 truncate">基準：100克</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compare Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+        <div class="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-black text-slate-700">
+          <span>資料庫全成分檢驗比較（含所有微量素）</span>
+          <span class="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold">綠色高亮為優勢指標</span>
+        </div>
+        <div id="compareTableContainer" class="divide-y divide-slate-100 text-xs">
+          <!-- Rendered dynamically with ALL DATABASE COMPONENTS -->
+        </div>
+      </div>
+
+      <!-- Similar Food Recommendations -->
+      <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black text-slate-800 flex items-center gap-1">
+            <i class="ph ph-sparkle text-indigo-600"></i>
+            <span>與選手 A 相似之營養平替食材推薦</span>
+          </span>
+          <span class="text-[10px] text-slate-400">依多維營養向量契合度</span>
+        </div>
+        <div id="compareSimilarContainer" class="grid grid-cols-2 gap-2">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </main>
+
+    <main id="tabContentAnalysis" class="flex-1 p-3.5 space-y-3.5 tab-panel hidden">
+      <!-- Intake Basket Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-black text-slate-800">飲食攝取分析清單</h2>
+          <p class="text-[10px] text-slate-400">收集當日餐食，自動加總並比對 DRIs 標準</p>
+        </div>
+        <button id="btnClearAnalysisBasket" class="touch-press text-[10px] text-red-600 hover:text-red-700 font-bold bg-red-50 px-2 py-1 rounded-lg border border-red-100 transition">
+          清空清單
+        </button>
+      </div>
+
+      <!-- Basket Food Items List -->
+      <div id="analysisBasketItemsList" class="space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Macronutrients & EER Balance Card -->
+      <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+            <i class="ph ph-chart-pie-slice text-emerald-600"></i>
+            <span>三大營養素熱量平衡比例</span>
+          </span>
+          <span class="text-[10px] text-slate-400">衛福部黃金比：P 10-20% · F 20-30% · C 50-60%</span>
+        </div>
+
+        <!-- 3 Macro Progress Bars -->
+        <div class="space-y-2" id="macroBalanceBarsContainer">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Micronutrients DRIs Progress Bars -->
+      <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+            <i class="ph ph-activity text-emerald-600"></i>
+            <span>微量營養素 DRIs 達成率 (RDA / AI / UL)</span>
+          </span>
+          <span id="labelAnalysisDriTargetProfile" class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">成年女性</span>
+        </div>
+
+        <div class="space-y-2.5" id="analysisMicronutrientsContainer">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Action Button: Clinical Nutritionist Diagnosis (Offline Local Rule Engine) -->
+      <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-3.5 shadow-2xs space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm shadow-xs">
+              <i class="ph ph-stethoscope"></i>
+            </div>
+            <div>
+              <h4 class="text-xs font-black text-slate-800">臨床營養師智慧處方評估</h4>
+              <p class="text-[10px] text-emerald-800">100% 本地演算法運算，零外部連線與隱私疑慮</p>
+            </div>
+          </div>
+          <span class="text-[9px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">離線本機</span>
+        </div>
+        
+        <button id="btnTriggerAnalysisAiReport" class="touch-press w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-sm flex items-center justify-center space-x-1.5 transition">
+          <i class="ph ph-clipboard-text text-sm"></i>
+          <span>即時生成營養師全套飲食診斷報告</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 z-40 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-slate-200 grid grid-cols-4 py-1.5 shadow-lg">
+      <button class="nav-tab active flex flex-col items-center justify-center py-1 text-emerald-600 touch-press transition" data-target="tabContentSearch">
+        <i class="ph ph-magnifying-glass text-lg"></i>
+        <span class="text-[10px] font-bold mt-0.5">食材速查</span>
+      </button>
+
+      <button class="nav-tab flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-600 touch-press transition" data-target="tabContentRank">
+        <i class="ph ph-trophy text-lg"></i>
+        <span class="text-[10px] font-bold mt-0.5">營養排行</span>
+      </button>
+
+      <button class="nav-tab flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-600 touch-press transition" data-target="tabContentCompare">
+        <i class="ph ph-scales text-lg"></i>
+        <span class="text-[10px] font-bold mt-0.5">雙物對比</span>
+      </button>
+
+      <button class="nav-tab flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-600 touch-press transition relative" data-target="tabContentAnalysis">
+        <i class="ph ph-chart-donut text-lg"></i>
+        <span class="text-[10px] font-bold mt-0.5">飲食分析</span>
+        <span id="navAnalysisBadge" class="hidden absolute top-0.5 right-6 w-4 h-4 bg-emerald-600 text-white text-[9px] font-black rounded-full flex items-center justify-center">0</span>
+      </button>
+    </nav>
+
+    <div id="drawerFoodDetail" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end justify-center hidden">
+      <div class="bg-white rounded-t-3xl max-w-md w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+        <!-- Drawer Header -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <div class="flex items-center space-x-3">
+            <span id="detailFoodIcon" class="text-3xl">🥗</span>
+            <div>
+              <div class="flex items-center space-x-2">
+                <h3 id="detailFoodName" class="text-base font-black text-slate-900">食材名稱</h3>
+                <span id="detailFoodCategory" class="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold">分類</span>
+              </div>
+              <p id="detailFoodNote" class="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]">詳細描述</p>
+            </div>
+          </div>
+          <button id="btnCloseFoodDetail" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-200/60">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Drawer Body Content -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 text-slate-700 text-xs">
+          
+          <!-- Baseline Dimension Selector -->
+          <div class="space-y-1.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+            <div class="flex items-center justify-between text-[11px] font-bold text-slate-700">
+              <span>設定換算基準與食用份量：</span>
+              <span id="detailCalculatedGramsText" class="text-emerald-700 font-mono font-black">100g</span>
+            </div>
+
+            <!-- Dimension Buttons -->
+            <div class="grid grid-cols-5 gap-1 text-[10px] font-bold bg-white p-1 rounded-xl border border-slate-200">
+              <button class="detail-dim-btn active py-1 rounded-lg bg-emerald-600 text-white text-center transition" data-dim="gram">⚖️ 重量</button>
+              <button class="detail-dim-btn py-1 rounded-lg text-slate-600 text-center transition" data-dim="kcal">🔥 熱量</button>
+              <button class="detail-dim-btn py-1 rounded-lg text-slate-600 text-center transition" data-dim="pro">💪 蛋白</button>
+              <button class="detail-dim-btn py-1 rounded-lg text-slate-600 text-center transition" data-dim="cho">🍚 碳水</button>
+              <button class="detail-dim-btn py-1 rounded-lg text-slate-600 text-center transition" data-dim="fat">🥑 脂肪</button>
+            </div>
+
+            <!-- Manual Value Adjuster -->
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <div class="flex items-center space-x-1" id="detailDimPresetsContainer">
+                <!-- Preset chips rendered by JS -->
+              </div>
+              <div class="flex items-center space-x-1">
+                <button id="btnDetailDecPortion" class="w-7 h-7 rounded-lg bg-white border border-slate-200 font-black text-slate-700 hover:bg-slate-100 flex items-center justify-center">-</button>
+                <input 
+                  type="number" 
+                  id="inputDetailPortionVal" 
+                  value="100" 
+                  min="1" 
+                  step="any"
+                  class="w-16 text-center font-black text-slate-900 bg-white border border-slate-200 rounded-lg py-1 px-1 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+                <span id="labelDetailPortionUnit" class="text-xs font-bold text-slate-600 min-w-[18px]">g</span>
+                <button id="btnDetailIncPortion" class="w-7 h-7 rounded-lg bg-white border border-slate-200 font-black text-slate-700 hover:bg-slate-100 flex items-center justify-center">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Macros Cards Grid -->
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="bg-amber-50 border border-amber-200 p-2 rounded-xl">
+              <div class="text-[9px] text-amber-700 font-bold">總熱量</div>
+              <div id="detailValKcal" class="text-sm font-black text-amber-900 mt-0.5">0</div>
+              <div class="text-[9px] text-amber-600 font-mono">kcal</div>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 p-2 rounded-xl">
+              <div class="text-[9px] text-blue-700 font-bold">粗蛋白質</div>
+              <div id="detailValPro" class="text-sm font-black text-blue-900 mt-0.5">0.0</div>
+              <div class="text-[9px] text-blue-600 font-mono">g</div>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+              <div class="text-[9px] text-emerald-700 font-bold">碳水化合物</div>
+              <div id="detailValCho" class="text-sm font-black text-emerald-900 mt-0.5">0.0</div>
+              <div class="text-[9px] text-emerald-600 font-mono">g</div>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 p-2 rounded-xl">
+              <div class="text-[9px] text-purple-700 font-bold">粗脂肪</div>
+              <div id="detailValFat" class="text-sm font-black text-purple-900 mt-0.5">0.0</div>
+              <div class="text-[9px] text-purple-600 font-mono">g</div>
+            </div>
+          </div>
+
+          <!-- Key Micronutrients & DRIs Percentages Grid -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-3 space-y-2 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-800">主要微量元素與 DRIs 達成率：</span>
+              <span id="detailProfileBadge" class="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-bold">成年女性</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center" id="detailMicrosGrid">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Expandable: TFDA Full Components Table -->
+          <div class="border border-slate-200 rounded-2xl overflow-hidden">
+            <button id="btnToggleAllNutrients" class="w-full p-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-700 transition">
+              <span class="flex items-center gap-1.5">
+                <i class="ph ph-table text-emerald-600"></i>
+                <span>展開 TFDA 食品資料庫全項檢驗指標完整表格</span>
+              </span>
+              <i id="iconToggleAllNutrients" class="ph ph-caret-down text-slate-400 transition-transform"></i>
+            </button>
+            <div id="allNutrientsFullTableContainer" class="hidden p-3 space-y-3 bg-white text-[11px] divide-y divide-slate-100">
+              <div class="space-y-1">
+                <span class="font-bold text-slate-900 text-xs">📋 一般成分與脂質分析</span>
+                <div id="fullNutrientsGeneral" class="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-600 pt-1"></div>
+              </div>
+              <div class="space-y-1 pt-2">
+                <span class="font-bold text-slate-900 text-xs">⛏️ 礦物質與微量元素</span>
+                <div id="fullNutrientsMinerals" class="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-600 pt-1"></div>
+              </div>
+              <div class="space-y-1 pt-2">
+                <span class="font-bold text-slate-900 text-xs">💊 維生素群分析</span>
+                <div id="fullNutrientsVitamins" class="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-600 pt-1"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Food Substitutes (Nutrient Similarity) -->
+          <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 space-y-1.5">
+            <span class="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+              <i class="ph ph-swap text-emerald-600"></i>
+              <span>同類相似營養替換推薦：</span>
+            </span>
+            <div id="detailSimilarFoodsContainer" class="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Drawer Action Buttons -->
+        <div class="p-3 border-t border-slate-100 bg-slate-50 grid grid-cols-2 gap-2">
+          <button id="btnDetailAddToAnalysis" class="touch-press py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-sm transition">
+            <i class="ph ph-plus-circle text-base"></i>
+            <span>以當前設定加入分析</span>
+          </button>
+          <button id="btnDetailAddToCompare" class="touch-press py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-sm transition">
+            <i class="ph ph-scales text-base"></i>
+            <span>以當前設定放入對比</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Setting Modal -->
+    <div id="modalProfileSetting" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-black text-slate-900 flex items-center gap-1.5">
+            <i class="ph ph-sliders text-emerald-600"></i>
+            <span>個人 DRIs 標準設定</span>
+          </h3>
+          <button id="btnCloseProfileModal" class="text-slate-400 hover:text-slate-600 p-1">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">生理性別：</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="gender-btn active py-2 rounded-xl border border-emerald-600 bg-emerald-50 text-emerald-900 font-bold text-center" data-gender="female">女性</button>
+              <button class="gender-btn py-2 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold text-center" data-gender="male">男性</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">年齡族群：</label>
+            <select id="selectProfileAgeGroup" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 focus:outline-none">
+              <option value="1-3">1-3 歲幼兒</option>
+              <option value="4-6">4-6 歲學齡前</option>
+              <option value="7-9">7-9 歲學童</option>
+              <option value="10-12">10-12 歲學童</option>
+              <option value="13-15">13-15 歲青少年</option>
+              <option value="16-18">16-18 歲青少年</option>
+              <option value="19-30">19-30 歲青年</option>
+              <option value="31-50" selected>31-50 歲壯年</option>
+              <option value="51-70">51-70 歲中年</option>
+              <option value="71+">71 歲以上銀髮</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">身體活動強度：</label>
+            <select id="selectProfileActivity" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 focus:outline-none">
+              <option value="light" selected>輕度（辦公久坐、靜態生活）</option>
+              <option value="moderate">中度（通勤走動、規律輕量運動）</option>
+              <option value="heavy">重度（高強度勞動、運動員）</option>
+            </select>
+          </div>
+
+          <div id="groupPregnancySelect">
+            <label class="font-bold text-slate-700 block mb-1">懷孕 / 哺乳特殊生理階段：</label>
+            <select id="selectProfilePregnancy" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 focus:outline-none">
+              <option value="none" selected>無（一般生理狀態）</option>
+              <option value="p1">懷孕第一期（0-12週）</option>
+              <option value="p2">懷孕第二期（13-24週）</option>
+              <option value="p3">懷孕第三期（25週至分娩）</option>
+              <option value="lact">哺乳期（產後哺乳）</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="btnSaveProfileModal" class="touch-press w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+          儲存並重新換算個人標準
+        </button>
+      </div>
+    </div>
+
+    <!-- Clinical Nutritionist Report Modal -->
+    <div id="modalAiReport" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-3xl max-w-sm w-full max-h-[88vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i class="ph ph-stethoscope text-xl text-emerald-200"></i>
+            <div>
+              <h3 class="text-xs font-black">臨床營養師飲食診斷報告</h3>
+              <p class="text-[9px] text-emerald-100">本機 DRIs 臨床規則引擎運算</p>
+            </div>
+          </div>
+          <button id="btnCloseAiReportModal" class="text-emerald-100 hover:text-white p-1 rounded-lg">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-3.5 text-slate-700 text-xs leading-relaxed" id="aiReportContentArea">
+          <!-- Dynamically populated report -->
+        </div>
+
+        <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex flex-col space-y-1 text-[9px] text-slate-500">
+          <div class="flex items-center space-x-1 text-emerald-800 font-bold">
+            <i class="ph ph-shield-check text-emerald-600"></i>
+            <span>100% 離線本地運算：零外部請求，完全保護飲食隱私。</span>
+          </div>
+          <p class="text-slate-400">
+            * 免責聲明：本報告依衛福部 DRIs 標準比對，僅供健康衛教參考，重大慢性疾病請遵醫囑。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Database Info & Google Sheets Connection Modal -->
+    <div id="modalTfdaDbFile" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3.5 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-black text-slate-900 flex items-center gap-1.5">
+            <i class="ph ph-database text-amber-600"></i>
+            <span>食品資料庫與 DRIs 雲端連線</span>
+          </h3>
+          <button id="btnCloseDbFileModal" class="text-slate-400 hover:text-slate-600 p-1">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="space-y-2 text-xs text-slate-600 leading-relaxed">
+          <p class="font-medium">
+            本系統內建食材指標與雲端試算表完整遵循台灣<strong class="text-slate-900">衛生福利部食品藥物管理署 (TFDA)</strong> 官方標準：
+          </p>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-1 text-[11px] text-amber-900">
+            <div class="font-bold flex items-center gap-1">
+              <i class="ph ph-database text-amber-700 text-sm"></i>
+              <span>純淨雲端資料庫架構</span>
+            </div>
+            <p class="text-amber-800 text-[10px]">
+              已移除所有靜態內建食材成分，完全使用雲端資料庫動態載入，確保資料最新、最即時。
+            </p>
+          </div>
+
+          <!-- Google Sheets Cloud Database Sync Section -->
+          <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-2.5 space-y-2 text-indigo-950">
+            <div class="flex items-center justify-between">
+              <div class="font-bold text-[11px] flex items-center gap-1 text-indigo-900">
+                <i class="ph ph-cloud-arrow-down text-base text-indigo-600"></i>
+                <span>Google 試算表雲端同步</span>
+              </div>
+              <span id="driveSyncStatusBadge" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                等待連線中
+              </span>
+            </div>
+            <p id="driveSyncStatusText" class="text-[10px] text-indigo-700 leading-tight">
+              連線至 Google Apps Script 部署端點...
+            </p>
+            <div id="driveDrisSyncStatus" class="text-[9px] text-emerald-700 font-bold hidden flex items-center gap-1">
+              <i class="ph ph-check-circle"></i>
+              <span id="driveDrisSyncText">DRIs 標準：已同步雲端試算表設定</span>
+            </div>
+            <div class="flex items-center space-x-1.5 pt-0.5">
+              <button id="btnManualSyncDrive" class="touch-press flex-1 py-1.5 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] text-center transition flex items-center justify-center space-x-1">
+                <i class="ph ph-arrows-clockwise"></i>
+                <span>從 Google 試算表重新同步</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-1.5 pt-1">
+            <a href="https://consumer.fda.gov.tw/Food/TFND.aspx?nodeID=178" target="_blank" rel="noopener noreferrer" class="touch-press block w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-center border border-slate-200 transition">
+              🌐 前往衛福部 TFDA 官方整合查詢平台
+            </a>
+            <button id="btnExportCurrentDbCsv" class="touch-press w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-center transition flex items-center justify-center space-x-1">
+              <i class="ph ph-download-simple"></i>
+              <span>匯出當前資料庫為 CSV (UTF-8 BOM)</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="btnDismissDbFileModal" class="touch-press w-full py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition">
+          關閉
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. TAIWAN DRIs REFERENCE STANDARDS (衛福部現行第八版基準，支援雲端試算表動態覆蓋)
+       ========================================================================== */
+    let DRIS_RULES = {
+      female: {
+        "1-3":   { eer: 1150, pro: 20, fiber: 15, ca: 500,  fe: 10, zn: 5,  mg: 80,  k: 1800, na: 1200, vitA: 400, vitC: 40,  vitD: 10, folate: 150 },
+        "4-6":   { eer: 1400, pro: 30, fiber: 20, ca: 600,  fe: 10, zn: 5,  mg: 120, k: 2000, na: 1500, vitA: 450, vitC: 50,  vitD: 10, folate: 200 },
+        "7-9":   { eer: 1650, pro: 40, fiber: 22, ca: 800,  fe: 10, zn: 8,  mg: 170, k: 2200, na: 1800, vitA: 500, vitC: 65,  vitD: 10, folate: 250 },
+        "10-12": { eer: 1900, pro: 50, fiber: 25, ca: 1000, fe: 15, zn: 10, mg: 230, k: 2500, na: 2000, vitA: 550, vitC: 80,  vitD: 10, folate: 300 },
+        "13-15": { eer: 2100, pro: 55, fiber: 27, ca: 1200, fe: 15, zn: 12, mg: 320, k: 2600, na: 2300, vitA: 550, vitC: 100, vitD: 10, folate: 400 },
+        "16-18": { eer: 2100, pro: 55, fiber: 27, ca: 1000, fe: 15, zn: 12, mg: 320, k: 2700, na: 2300, vitA: 550, vitC: 100, vitD: 10, folate: 400 },
+        "19-30": { eer: 1900, pro: 50, fiber: 27, ca: 1000, fe: 15, zn: 12, mg: 320, k: 2700, na: 2300, vitA: 500, vitC: 100, vitD: 10, folate: 400 },
+        "31-50": { eer: 1900, pro: 50, fiber: 27, ca: 1000, fe: 15, zn: 12, mg: 320, k: 2700, na: 2300, vitA: 500, vitC: 100, vitD: 10, folate: 400 },
+        "51-70": { eer: 1800, pro: 50, fiber: 25, ca: 1000, fe: 10, zn: 12, mg: 310, k: 2700, na: 2300, vitA: 500, vitC: 100, vitD: 10, folate: 400 },
+        "71+":   { eer: 1600, pro: 50, fiber: 22, ca: 1000, fe: 10, zn: 12, mg: 300, k: 2700, na: 2000, vitA: 500, vitC: 100, vitD: 15, folate: 400 }
+      },
+      male: {
+        "1-3":   { eer: 1250, pro: 20, fiber: 15, ca: 500,  fe: 10, zn: 5,  mg: 80,  k: 1800, na: 1200, vitA: 400, vitC: 40,  vitD: 10, folate: 150 },
+        "4-6":   { eer: 1550, pro: 30, fiber: 20, ca: 600,  fe: 10, zn: 5,  mg: 120, k: 2000, na: 1500, vitA: 450, vitC: 50,  vitD: 10, folate: 200 },
+        "7-9":   { eer: 1800, pro: 40, fiber: 25, ca: 800,  fe: 10, zn: 8,  mg: 170, k: 2200, na: 1800, vitA: 500, vitC: 65,  vitD: 10, folate: 250 },
+        "10-12": { eer: 2150, pro: 55, fiber: 28, ca: 1000, fe: 10, zn: 10, mg: 230, k: 2500, na: 2000, vitA: 600, vitC: 80,  vitD: 10, folate: 300 },
+        "13-15": { eer: 2450, pro: 70, fiber: 32, ca: 1200, fe: 15, zn: 15, mg: 350, k: 2800, na: 2300, vitA: 600, vitC: 100, vitD: 10, folate: 400 },
+        "16-18": { eer: 2650, pro: 75, fiber: 34, ca: 1000, fe: 15, zn: 15, mg: 390, k: 2800, na: 2300, vitA: 600, vitC: 100, vitD: 10, folate: 400 },
+        "19-30": { eer: 2350, pro: 65, fiber: 34, ca: 1000, fe: 10, zn: 15, mg: 380, k: 2800, na: 2300, vitA: 600, vitC: 100, vitD: 10, folate: 400 },
+        "31-50": { eer: 2300, pro: 65, fiber: 34, ca: 1000, fe: 10, zn: 15, mg: 380, k: 2800, na: 2300, vitA: 600, vitC: 100, vitD: 10, folate: 400 },
+        "51-70": { eer: 2150, pro: 65, fiber: 30, ca: 1000, fe: 10, zn: 15, mg: 380, k: 2800, na: 2300, vitA: 600, vitC: 100, vitD: 10, folate: 400 },
+        "71+":   { eer: 1950, pro: 60, fiber: 25, ca: 1000, fe: 10, zn: 15, mg: 350, k: 2800, na: 2000, vitA: 600, vitC: 100, vitD: 15, folate: 400 }
+      }
+    };
+
+    let isCloudDrisLoaded = false;
+
+    let PREGNANCY_ADDONS = {
+      none: { eer: 0,   pro: 0,  fe: 0,  folate: 0,   ca: 0 },
+      p1:   { eer: 0,   pro: 0,  fe: 0,  folate: 200, ca: 0 },
+      p2:   { eer: 300, pro: 10, fe: 0,  folate: 200, ca: 0 },
+      p3:   { eer: 300, pro: 10, fe: 30, folate: 200, ca: 0 },
+      lact: { eer: 500, pro: 15, fe: 0,  folate: 100, ca: 0 }
+    };
+
+    // 內建食材庫完全清空：完全依賴連線雲端資料庫載入
+    const FOOD_ITEMS = [];
+
+    /* ==========================================================================
+       2. METADATA DICTIONARY: ALL TFDA OFFICIAL NUTRIENTS & INDICATORS
+       ========================================================================== */
+    const NUTRIENT_META_MAP = {
+      kcal: { name: "熱量 (Kcal)", unit: "kcal", key: "kcal", group: "macro", lowerBetter: true, dec: 0 },
+      pro: { name: "粗蛋白質", unit: "g", key: "pro", group: "macro", dec: 1 },
+      cho: { name: "總碳水化合物", unit: "g", key: "cho", group: "macro", dec: 1 },
+      fat: { name: "粗脂肪", unit: "g", key: "fat", group: "macro", lowerBetter: true, dec: 1 },
+      fiber: { name: "膳食纖維", unit: "g", key: "fiber", group: "macro", dec: 1 },
+      sugar: { name: "糖質總量", unit: "g", key: "sugar", group: "macro", lowerBetter: true, dec: 1 },
+      water: { name: "水分含量 (Water)", unit: "g", key: "water", group: "general", dec: 1 },
+      ash: { name: "灰分含量 (Ash)", unit: "g", key: "ash", group: "general", dec: 1 },
+      satFat: { name: "飽和脂肪酸 (SFA)", unit: "g", key: "satFat", group: "lipid", lowerBetter: true, dec: 1 },
+      mufa: { name: "單元不飽和脂肪酸 (MUFA)", unit: "g", key: "mufa", group: "lipid", dec: 1 },
+      pufa: { name: "多元不飽和脂肪酸 (PUFA)", unit: "g", key: "pufa", group: "lipid", dec: 1 },
+      chol: { name: "膽固醇", unit: "mg", key: "chol", group: "lipid", lowerBetter: true, dec: 0 },
+      na: { name: "鈉含量 (Na)", unit: "mg", key: "na", group: "mineral", lowerBetter: true, dec: 0 },
+      k: { name: "鉀離子 (K)", unit: "mg", key: "k", group: "mineral", dec: 0 },
+      ca: { name: "鈣質 (Ca)", unit: "mg", key: "ca", group: "mineral", dec: 0 },
+      mg: { name: "鎂 (Mg)", unit: "mg", key: "mg", group: "mineral", dec: 0 },
+      p: { name: "磷 (P)", unit: "mg", key: "p", group: "mineral", dec: 0 },
+      fe: { name: "鐵質 (Fe)", unit: "mg", key: "fe", group: "mineral", dec: 1 },
+      zn: { name: "鋅 (Zn)", unit: "mg", key: "zn", group: "mineral", dec: 1 },
+      cu: { name: "銅 (Cu)", unit: "mg", key: "cu", group: "mineral", dec: 2 },
+      mn: { name: "錳 (Mn)", unit: "mg", key: "mn", group: "mineral", dec: 2 },
+      vitA: { name: "維生素 A 總量", unit: "ug RAE", key: "vitA", group: "vitamin", dec: 0 },
+      alphaCaro: { name: "α-胡蘿蔔素", unit: "ug", key: "alphaCaro", group: "vitamin", dec: 0 },
+      betaCaro: { name: "β-胡蘿蔔素", unit: "ug", key: "betaCaro", group: "vitamin", dec: 0 },
+      vitD: { name: "維生素 D", unit: "ug", key: "vitD", group: "vitamin", dec: 2 },
+      vitE: { name: "維生素 E", unit: "mg", key: "vitE", group: "vitamin", dec: 1 },
+      vitB1: { name: "維生素 B1", unit: "mg", key: "vitB1", group: "vitamin", dec: 2 },
+      vitB2: { name: "維生素 B2", unit: "mg", key: "vitB2", group: "vitamin", dec: 2 },
+      niacin: { name: "菸鹼素 (Niacin)", unit: "mg", key: "niacin", group: "vitamin", dec: 2 },
+      vitB6: { name: "維生素 B6", unit: "mg", key: "vitB6", group: "vitamin", dec: 2 },
+      vitB12: { name: "維生素 B12", unit: "ug", key: "vitB12", group: "vitamin", dec: 2 },
+      folate: { name: "葉酸 (Folate)", unit: "mcg", key: "folate", group: "vitamin", dec: 0 },
+      vitC: { name: "維生素 C", unit: "mg", key: "vitC", group: "vitamin", dec: 0 },
+      lowKcal: { name: "低熱量密度", unit: "kcal", key: "kcal", lowerBetter: true, dec: 0 },
+      lowNa: { name: "低鈉無負擔", unit: "mg", key: "na", lowerBetter: true, dec: 0 }
+    };
+
+    let userProfile = { gender: 'female', ageGroup: '31-50', activity: 'light', pregnancy: 'none' };
+    
+    // Dynamic Categories State
+    let dynamicCategories = [];
+    let selectedSearchCategories = new Set();
+    let selectedRankCategories = new Set();
+
+    let searchQuery = '';
+    let activeSortNutrient = null;
+
+    let currentRankDim = 'gram';
+    let currentRankCustomVal = 100;
+    let currentRankNutrient = 'ca';
+    let currentRankSortOrder = 'desc';
+
+    const RANK_DIM_CONFIG = {
+      gram: { unit: 'g', defaultVal: 100, presets: [50, 100, 150, 200], descName: '重量' },
+      kcal: { unit: 'kcal', defaultVal: 100, presets: [100, 200, 300, 500], descName: '熱量' },
+      pro:  { unit: 'g', defaultVal: 10,  presets: [7, 10, 14, 20], descName: '蛋白質' },
+      cho:  { unit: 'g', defaultVal: 15,  presets: [15, 30, 45, 60], descName: '碳水化合物' },
+      fat:  { unit: 'g', defaultVal: 5,   presets: [5, 10, 15, 20], descName: '脂肪' }
+    };
+
+    let currentDetailFood = null;
+    let currentDetailDim = 'gram';
+    let currentDetailPortionVal = 100;
+    let isAllNutrientsTableExpanded = false;
+
+    let compSlotA = { foodId: '', grams: 100, conditionDesc: '基準：100克' };
+    let compSlotB = { foodId: '', grams: 100, conditionDesc: '基準：100克' };
+    let compMode = 'custom';
+    let nextCompareSlotToReplace = 'A';
+
+    let analysisBasket = [];
+
+    /* ==========================================================================
+       3. UTILITY FUNCTIONS & LOGIC
+       ========================================================================== */
+    function guessFoodEmoji(name = '', cat = '') {
+      const s = (String(name) + ' ' + String(cat)).toLowerCase();
+      if (s.includes('飯') || s.includes('米') || s.includes('穀') || s.includes('麥')) return '🍚';
+      if (s.includes('麵') || s.includes('粉') || s.includes('粿')) return '🍜';
+      if (s.includes('雞') || s.includes('鴨') || s.includes('鵝') || s.includes('禽')) return '🍗';
+      if (s.includes('豬') || s.includes('牛') || s.includes('羊') || s.includes('肉')) return '🥩';
+      if (s.includes('魚') || s.includes('蝦') || s.includes('蟹') || s.includes('貝') || s.includes('海鮮') || s.includes('水產') || s.includes('鰻') || s.includes('鯛')) return '🐟';
+      if (s.includes('蛋')) return '🥚';
+      if (s.includes('豆') || s.includes('豆腐')) return '🧊';
+      if (s.includes('奶') || s.includes('乳') || s.includes('起司') || s.includes('優格')) return '🥛';
+      if (s.includes('菜') || s.includes('甘藍') || s.includes('葉') || s.includes('花椰') || s.includes('菠菜') || s.includes('青')) return '🥦';
+      if (s.includes('果') || s.includes('蘋果') || s.includes('芭樂') || s.includes('香蕉') || s.includes('柑') || s.includes('橘') || s.includes('瓜')) return '🍎';
+      if (s.includes('菇') || s.includes('菌') || s.includes('木耳')) return '🍄';
+      if (s.includes('油') || s.includes('脂')) return '🫒';
+      if (s.includes('茶') || s.includes('飲') || s.includes('水') || s.includes('汁') || s.includes('咖啡')) return '🍵';
+      if (s.includes('糖') || s.includes('甜') || s.includes('糕') || s.includes('餅') || s.includes('點心') || s.includes('巧克力')) return '🧁';
+      if (s.includes('堅果') || s.includes('種子') || s.includes('芝麻') || s.includes('花生') || s.includes('杏仁') || s.includes('腰果')) return '🥜';
+      if (s.includes('根') || s.includes('薯') || s.includes('芋') || s.includes('筍') || s.includes('蘿蔔')) return '🍠';
+      return '🥗';
+    }
+
+    function refreshDatabaseCategories() {
+      const catSet = new Set();
+      FOOD_ITEMS.forEach(item => {
+        if (item.catName && typeof item.catName === 'string') {
+          const trimmed = item.catName.trim();
+          if (trimmed.length > 0 && trimmed !== 'undefined' && trimmed !== 'null') {
+            catSet.add(trimmed);
+          }
+        }
+      });
+      dynamicCategories = Array.from(catSet).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+      const validSearchSet = new Set();
+      selectedSearchCategories.forEach(c => {
+        if (catSet.has(c)) validSearchSet.add(c);
+      });
+      selectedSearchCategories = validSearchSet;
+
+      const validRankSet = new Set();
+      selectedRankCategories.forEach(c => {
+        if (catSet.has(c)) validRankSet.add(c);
+      });
+      selectedRankCategories = validRankSet;
+
+      renderSearchCategoryPills();
+      renderRankCategoryPills();
+    }
+
+    function renderSearchCategoryPills() {
+      const container = document.getElementById('searchCategoryPillsContainer');
+      const badge = document.getElementById('searchCatCountBadge');
+      if (!container) return;
+
+      if (FOOD_ITEMS.length === 0) {
+        if (badge) badge.textContent = '連線載入中...';
+        container.innerHTML = `<span class="text-[11px] text-slate-400">正在連接雲端試算表...</span>`;
+        return;
+      }
+
+      const isAll = selectedSearchCategories.size === 0 || selectedSearchCategories.size === dynamicCategories.length;
+      if (badge) {
+        badge.textContent = isAll ? '全部食材' : `已複選 ${selectedSearchCategories.size} 類`;
+      }
+
+      let html = `
+        <button class="search-cat-btn flex-shrink-0 px-3 py-1 rounded-full font-bold transition text-xs ${isAll ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}" data-cat="__ALL__">
+          全部食材
+        </button>
+      `;
+
+      dynamicCategories.forEach(cat => {
+        const isSelected = selectedSearchCategories.has(cat);
+        html += `
+          <button class="search-cat-btn flex-shrink-0 px-2.5 py-1 rounded-full font-bold transition text-xs ${isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}" data-cat="${cat}">
+            ${cat}
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('.search-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cat = btn.getAttribute('data-cat');
+          if (cat === '__ALL__') {
+            selectedSearchCategories.clear();
+          } else {
+            if (selectedSearchCategories.has(cat)) {
+              selectedSearchCategories.delete(cat);
+            } else {
+              selectedSearchCategories.add(cat);
+            }
+          }
+          renderSearchCategoryPills();
+          renderFoodList();
+        });
+      });
+    }
+
+    function renderRankCategoryPills() {
+      const container = document.getElementById('rankCategoryPillsContainer');
+      const badge = document.getElementById('rankCatSelectedSummaryBadge');
+      if (!container) return;
+
+      if (FOOD_ITEMS.length === 0) {
+        if (badge) badge.textContent = '連線載入中...';
+        container.innerHTML = `<span class="text-[11px] text-slate-400">正在連接雲端試算表...</span>`;
+        return;
+      }
+
+      const isAll = selectedRankCategories.size === 0 || selectedRankCategories.size === dynamicCategories.length;
+      if (badge) {
+        badge.textContent = isAll ? '全部食材' : `已複選 ${selectedRankCategories.size} 類`;
+      }
+
+      let html = `
+        <button class="rank-cat-pill-btn flex-shrink-0 px-3 py-1 rounded-full font-bold transition text-xs ${isAll ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}" data-cat="__ALL__">
+          全部食材
+        </button>
+      `;
+
+      dynamicCategories.forEach(cat => {
+        const isSelected = selectedRankCategories.has(cat);
+        html += `
+          <button class="rank-cat-pill-btn flex-shrink-0 px-2.5 py-1 rounded-full font-bold transition text-xs ${isSelected ? 'bg-amber-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}" data-cat="${cat}">
+            ${cat}
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('.rank-cat-pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cat = btn.getAttribute('data-cat');
+          if (cat === '__ALL__') {
+            selectedRankCategories.clear();
+          } else {
+            if (selectedRankCategories.has(cat)) {
+              selectedRankCategories.delete(cat);
+            } else {
+              selectedRankCategories.add(cat);
+            }
+          }
+          renderRankCategoryPills();
+          renderRankings();
+        });
+      });
+    }
+
+    function getActiveDriStandards() {
+      const g = userProfile.gender || 'female';
+      const age = userProfile.ageGroup || '31-50';
+      const base = (DRIS_RULES[g] && DRIS_RULES[g][age]) ? DRIS_RULES[g][age] : DRIS_RULES.female["31-50"];
+      const preg = (g === 'female') ? (PREGNANCY_ADDONS[userProfile.pregnancy] || PREGNANCY_ADDONS.none) : PREGNANCY_ADDONS.none;
+
+      let activityMultiplier = 1.0;
+      if (userProfile.activity === 'moderate') activityMultiplier = 1.15;
+      if (userProfile.activity === 'heavy') activityMultiplier = 1.35;
+
+      return {
+        eer: Math.round(base.eer * activityMultiplier + preg.eer),
+        pro: base.pro + preg.pro,
+        fiber: base.fiber,
+        ca: base.ca + (preg.ca || 0),
+        fe: base.fe + preg.fe,
+        zn: base.zn,
+        mg: base.mg,
+        k: base.k,
+        na: base.na,
+        vitA: base.vitA,
+        vitC: base.vitC,
+        vitD: base.vitD,
+        folate: base.folate + preg.folate
+      };
+    }
+
+    function updateProfileOverview() {
+      const gText = userProfile.gender === 'female' ? '女性' : '男性';
+      const ageText = userProfile.ageGroup + '歲';
+      let pregText = '';
+      if (userProfile.gender === 'female' && userProfile.pregnancy !== 'none') {
+        if (userProfile.pregnancy === 'p1') pregText = ' · 孕1期';
+        else if (userProfile.pregnancy === 'p2') pregText = ' · 孕2期';
+        else if (userProfile.pregnancy === 'p3') pregText = ' · 孕3期';
+        else if (userProfile.pregnancy === 'lact') pregText = ' · 哺乳期';
+      }
+      const label = `${gText} ${ageText}${pregText}`;
+      
+      const headerLabel = document.getElementById('headerProfileLabel');
+      if (headerLabel) headerLabel.textContent = label;
+      
+      const detailBadge = document.getElementById('detailProfileBadge');
+      if (detailBadge) detailBadge.textContent = label;
+
+      const anaBadge = document.getElementById('labelAnalysisDriTargetProfile');
+      if (anaBadge) anaBadge.textContent = label;
+    }
+
+    function renderFoodList() {
+      const container = document.getElementById('foodListContainer');
+      if (!container) return;
+
+      if (FOOD_ITEMS.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 p-6 space-y-3">
+            <div class="w-8 h-8 mx-auto border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="font-bold text-xs text-slate-700">正在即時連線資料庫讀取食材資料...</p>
+            <p class="text-[10px] text-slate-400">已完全移除內建食材，請稍候片刻。</p>
+          </div>
+        `;
+        return;
+      }
+
+      const query = searchQuery.trim().toLowerCase();
+      const isAllCat = selectedSearchCategories.size === 0 || selectedSearchCategories.size === dynamicCategories.length;
+
+      let filtered = FOOD_ITEMS.filter(item => {
+        const matchCat = isAllCat || selectedSearchCategories.has(item.catName);
+        const matchQuery = !query || 
+          item.name.toLowerCase().includes(query) || 
+          item.catName.toLowerCase().includes(query) ||
+          (item.note && item.note.toLowerCase().includes(query));
+        return matchCat && matchQuery;
+      });
+
+      if (activeSortNutrient) {
+        filtered.sort((a, b) => {
+          if (activeSortNutrient === 'lowKcal') return a.kcal - b.kcal;
+          if (activeSortNutrient === 'lowNa') return a.na - b.na;
+          return (b[activeSortNutrient] || 0) - (a[activeSortNutrient] || 0);
+        });
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 p-5 space-y-2">
+            <i class="ph ph-magnifying-glass text-3xl text-slate-300"></i>
+            <p class="font-bold text-xs text-slate-600">未找到相符之食材「${searchQuery}」</p>
+            <p class="text-[10px] text-slate-400">建議點選「全部食材」重設分類或搜尋其他關鍵字。</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(f => {
+        let sortValBadge = '';
+        if (activeSortNutrient) {
+          let label = '';
+          let val = f[activeSortNutrient];
+          let unit = '';
+          if (activeSortNutrient === 'pro') { label = '蛋白質'; unit = 'g'; }
+          else if (activeSortNutrient === 'ca') { label = '鈣'; unit = 'mg'; }
+          else if (activeSortNutrient === 'fe') { label = '鐵'; unit = 'mg'; }
+          else if (activeSortNutrient === 'fiber') { label = '纖維'; unit = 'g'; }
+          else if (activeSortNutrient === 'vitC') { label = '維C'; unit = 'mg'; }
+          else if (activeSortNutrient === 'lowKcal') { label = '熱量'; val = f.kcal; unit = 'kcal'; }
+          else if (activeSortNutrient === 'lowNa') { label = '鈉'; val = f.na; unit = 'mg'; }
+          sortValBadge = `<span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-md">${label}: ${val}${unit}</span>`;
+        }
+
+        return `
+          <div class="touch-press bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between cursor-pointer hover:border-emerald-300 transition shadow-2xs" onclick="openFoodDetail('${f.id}')">
+            <div class="flex items-center space-x-3">
+              <span class="text-2xl">${f.icon}</span>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <h4 class="font-bold text-slate-800 text-xs">${f.name}</h4>
+                  <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-medium">${f.catName}</span>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2 font-mono">
+                  <span>${f.kcal} kcal</span>
+                  <span>P: ${f.pro}g</span>
+                  <span>C: ${f.cho}g</span>
+                  <span>F: ${f.fat}g</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1 text-right">
+              ${sortValBadge}
+              <i class="ph ph-caret-right text-slate-400 text-xs"></i>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRankPresets() {
+      const container = document.getElementById('rankDimPresetsContainer');
+      const unitEl = document.getElementById('labelRankCustomBaseUnit');
+      if (!container || !unitEl) return;
+
+      const conf = RANK_DIM_CONFIG[currentRankDim] || RANK_DIM_CONFIG.gram;
+      unitEl.textContent = conf.unit;
+
+      container.innerHTML = conf.presets.map(p => `
+        <button class="rank-preset-chip touch-press px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-amber-500 hover:text-amber-800 transition" data-val="${p}">
+          ${p}${conf.unit}
+        </button>
+      `).join('');
+
+      container.querySelectorAll('.rank-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const val = parseFloat(chip.getAttribute('data-val'));
+          currentRankCustomVal = val;
+          const inputEl = document.getElementById('inputRankCustomBaseVal');
+          if (inputEl) inputEl.value = val;
+          renderRankings();
+        });
+      });
+    }
+
+    function renderRankings(rankType = null) {
+      if (rankType) currentRankNutrient = rankType;
+
+      const container = document.getElementById('rankListContainer');
+      if (!container) return;
+
+      if (FOOD_ITEMS.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 p-5">
+            <p class="font-bold text-xs text-slate-700">正在等待資料庫連線...</p>
+          </div>
+        `;
+        return;
+      }
+
+      const conf = RANK_DIM_CONFIG[currentRankDim] || RANK_DIM_CONFIG.gram;
+      const targetNutrient = currentRankNutrient;
+      const customVal = Math.max(0.1, currentRankCustomVal || conf.defaultVal);
+
+      const badgeEl = document.getElementById('rankBaseDescBadge');
+      const textEl = document.getElementById('rankBaseExplText');
+      if (badgeEl) badgeEl.textContent = `每 ${customVal} ${conf.unit} ${conf.descName}基準`;
+      if (textEl) {
+        if (currentRankDim === 'gram') {
+          textEl.textContent = `基準：以食材每 ${customVal} g 可食部位直接排名。`;
+        } else {
+          textEl.textContent = `基準：以提供 ${customVal} ${conf.unit} ${conf.descName}所需食材重量動態逆推排名。`;
+        }
+      }
+
+      const isQuickBtn = ['ca', 'fe', 'pro', 'fiber', 'vitC', 'k', 'zn', 'vitA'].includes(targetNutrient);
+      document.querySelectorAll('.rank-tab-btn').forEach(btn => {
+        const btnRank = btn.getAttribute('data-rank');
+        const isActive = isQuickBtn && (btnRank === targetNutrient);
+        btn.classList.toggle('border-amber-500', isActive);
+        btn.classList.toggle('bg-amber-50', isActive);
+        btn.classList.toggle('text-amber-800', isActive);
+        btn.classList.toggle('border-slate-200', !isActive);
+        btn.classList.toggle('bg-white', !isActive);
+        btn.classList.toggle('text-slate-700', !isActive);
+      });
+
+      const selectEl = document.getElementById('selectRankOtherNutrient');
+      if (selectEl) {
+        selectEl.value = targetNutrient;
+      }
+
+      const meta = NUTRIENT_META_MAP[targetNutrient] || NUTRIENT_META_MAP.ca;
+      const nutrientKey = meta.key;
+      const nutrientUnit = meta.unit;
+      const decimals = meta.dec !== undefined ? meta.dec : 1;
+
+      // Min and Max Range Filters
+      const minValInput = document.getElementById('inputRankMinVal')?.value;
+      const maxValInput = document.getElementById('inputRankMaxVal')?.value;
+      const hasMin = (minValInput !== undefined && minValInput !== '' && !isNaN(parseFloat(minValInput)));
+      const hasMax = (maxValInput !== undefined && maxValInput !== '' && !isNaN(parseFloat(maxValInput)));
+      const minVal = hasMin ? parseFloat(minValInput) : null;
+      const maxVal = hasMax ? parseFloat(maxValInput) : null;
+
+      const rankedList = [];
+      const isAllRankCat = selectedRankCategories.size === 0 || selectedRankCategories.size === dynamicCategories.length;
+      
+      const targetFoods = FOOD_ITEMS.filter(f => isAllRankCat || selectedRankCategories.has(f.catName));
+
+      targetFoods.forEach(f => {
+        let gramsRequired = 100;
+        let isEligible = true;
+
+        if (currentRankDim === 'gram') {
+          gramsRequired = customVal;
+        } else if (currentRankDim === 'kcal') {
+          if (!f.kcal || f.kcal <= 0) isEligible = false;
+          else gramsRequired = (customVal / f.kcal) * 100;
+        } else if (currentRankDim === 'pro') {
+          if (!f.pro || f.pro < 0.1) isEligible = false;
+          else gramsRequired = (customVal / f.pro) * 100;
+        } else if (currentRankDim === 'cho') {
+          if (!f.cho || f.cho < 0.1) isEligible = false;
+          else gramsRequired = (customVal / f.cho) * 100;
+        } else if (currentRankDim === 'fat') {
+          if (!f.fat || f.fat < 0.1) isEligible = false;
+          else gramsRequired = (customVal / f.fat) * 100;
+        }
+
+        if (isEligible) {
+          const rawVal100g = f[nutrientKey] !== undefined ? f[nutrientKey] : 0;
+          const calculatedVal = (rawVal100g * (gramsRequired / 100));
+
+          if (hasMin && calculatedVal < minVal) isEligible = false;
+          if (hasMax && calculatedVal > maxVal) isEligible = false;
+
+          if (isEligible) {
+            rankedList.push({
+              food: f,
+              gramsRequired: Math.round(gramsRequired),
+              calculatedVal: Number(calculatedVal.toFixed(decimals)),
+              rawVal100g: rawVal100g
+            });
+          }
+        }
+      });
+
+      // Sorting based on user selection (desc or asc)
+      rankedList.sort((a, b) => {
+        if (currentRankSortOrder === 'asc') {
+          return a.calculatedVal - b.calculatedVal;
+        } else {
+          return b.calculatedVal - a.calculatedVal;
+        }
+      });
+
+      // Top 20 items for leaderboard
+      const top20 = rankedList.slice(0, 20);
+
+      if (top20.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 p-5 space-y-1">
+            <i class="ph ph-warning-circle text-2xl text-slate-300"></i>
+            <p class="font-bold text-xs text-slate-600">在此篩選條件下未找到符合之食材</p>
+            <p class="text-[10px] text-slate-400">請嘗試放寬分類複選、清除數值上下限或調整換算基準。</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = top20.map((item, idx) => {
+        const f = item.food;
+        let medal = `<span class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center text-xs">${idx + 1}</span>`;
+        if (idx === 0) medal = `<span class="w-6 h-6 rounded-full bg-amber-400 text-white font-black flex items-center justify-center text-xs shadow-xs">🥇</span>`;
+        if (idx === 1) medal = `<span class="w-6 h-6 rounded-full bg-slate-300 text-white font-black flex items-center justify-center text-xs shadow-xs">🥈</span>`;
+        if (idx === 2) medal = `<span class="w-6 h-6 rounded-full bg-amber-600 text-white font-black flex items-center justify-center text-xs shadow-xs">🥉</span>`;
+
+        let baseTag = "";
+        if (currentRankDim !== 'gram' || customVal !== 100) {
+          baseTag = `<span class="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-semibold">需食用約 ${item.gramsRequired}g</span>`;
+        }
+
+        return `
+          <div class="touch-press bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between cursor-pointer hover:border-amber-300 transition shadow-2xs" onclick="openFoodDetail('${f.id}', ${item.gramsRequired})">
+            <div class="flex items-center space-x-2.5">
+              ${medal}
+              <span class="text-xl">${f.icon}</span>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <h4 class="font-bold text-slate-800 text-xs">${f.name}</h4>
+                  <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded font-medium">${f.catName}</span>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 font-mono">
+                  <span>${f.kcal} kcal/百克</span>
+                  ${baseTag}
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-sm font-black text-amber-600">${item.calculatedVal}</span>
+              <span class="text-[10px] text-slate-500 font-bold">${nutrientUnit}</span>
+              <div class="text-[9px] text-slate-400 truncate max-w-[100px]">${meta.name}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openFoodDetail(foodId, overrideGrams = null) {
+      const food = FOOD_ITEMS.find(item => item.id === foodId);
+      if (!food) return;
+
+      currentDetailFood = food;
+      currentDetailDim = 'gram';
+      currentDetailPortionVal = overrideGrams ? overrideGrams : 100;
+
+      document.getElementById('detailFoodIcon').textContent = food.icon;
+      document.getElementById('detailFoodName').textContent = food.name;
+      document.getElementById('detailFoodCategory').textContent = food.catName;
+      document.getElementById('detailFoodNote').textContent = food.note || '衛福部檢驗食材';
+
+      updateDetailDimPresets();
+      updateDetailCalculations();
+      renderDetailSimilarFoods();
+
+      document.getElementById('drawerFoodDetail').classList.remove('hidden');
+    }
+
+    function updateDetailDimPresets() {
+      const container = document.getElementById('detailDimPresetsContainer');
+      const unitEl = document.getElementById('labelDetailPortionUnit');
+      if (!container || !unitEl) return;
+
+      const conf = RANK_DIM_CONFIG[currentDetailDim] || RANK_DIM_CONFIG.gram;
+      unitEl.textContent = conf.unit;
+
+      container.innerHTML = conf.presets.map(p => `
+        <button class="detail-preset-chip touch-press px-2 py-0.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-emerald-500 hover:text-emerald-700 transition" data-val="${p}">
+          ${p}${conf.unit}
+        </button>
+      `).join('');
+
+      container.querySelectorAll('.detail-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          currentDetailPortionVal = parseFloat(chip.getAttribute('data-val'));
+          const inputEl = document.getElementById('inputDetailPortionVal');
+          if (inputEl) inputEl.value = currentDetailPortionVal;
+          updateDetailCalculations();
+        });
+      });
+    }
+
+    function calculateDetailGrams() {
+      if (!currentDetailFood) return 100;
+      const f = currentDetailFood;
+      const val = Math.max(0.1, currentDetailPortionVal || 100);
+
+      if (currentDetailDim === 'gram') return val;
+      if (currentDetailDim === 'kcal') return f.kcal > 0 ? (val / f.kcal) * 100 : 100;
+      if (currentDetailDim === 'pro') return f.pro > 0 ? (val / f.pro) * 100 : 100;
+      if (currentDetailDim === 'cho') return f.cho > 0 ? (val / f.cho) * 100 : 100;
+      if (currentDetailDim === 'fat') return f.fat > 0 ? (val / f.fat) * 100 : 100;
+      return 100;
+    }
+
+    function updateDetailCalculations() {
+      if (!currentDetailFood) return;
+      const f = currentDetailFood;
+      const grams = calculateDetailGrams();
+      const ratio = grams / 100;
+
+      document.getElementById('detailCalculatedGramsText').textContent = `約食用 ${Math.round(grams)} g`;
+
+      document.getElementById('detailValKcal').textContent = Math.round(f.kcal * ratio);
+      document.getElementById('detailValPro').textContent = (f.pro * ratio).toFixed(1);
+      document.getElementById('detailValCho').textContent = (f.cho * ratio).toFixed(1);
+      document.getElementById('detailValFat').textContent = (f.fat * ratio).toFixed(1);
+
+      const std = getActiveDriStandards();
+      const microsGrid = document.getElementById('detailMicrosGrid');
+      if (microsGrid) {
+        const keyMicros = [
+          { label: '鈣質', val: (f.ca * ratio).toFixed(0), unit: 'mg', target: std.ca },
+          { label: '鐵質', val: (f.fe * ratio).toFixed(1), unit: 'mg', target: std.fe },
+          { label: '膳食纖維', val: (f.fiber * ratio).toFixed(1), unit: 'g', target: std.fiber },
+          { label: '維生素C', val: (f.vitC * ratio).toFixed(0), unit: 'mg', target: std.vitC },
+          { label: '鉀離子', val: (f.k * ratio).toFixed(0), unit: 'mg', target: std.k },
+          { label: '鈉上限', val: (f.na * ratio).toFixed(0), unit: 'mg', target: 2300, isUl: true }
+        ];
+
+        microsGrid.innerHTML = keyMicros.map(m => {
+          const pct = Math.round((m.val / m.target) * 100);
+          let badgeColor = 'text-emerald-700 bg-emerald-50';
+          if (m.isUl && m.val > 500) badgeColor = 'text-amber-700 bg-amber-50';
+          if (pct >= 50 && !m.isUl) badgeColor = 'text-emerald-800 bg-emerald-100 font-black';
+
+          return `
+            <div class="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+              <div class="text-[10px] text-slate-500 font-medium">${m.label}</div>
+              <div class="text-xs font-black text-slate-800 mt-0.5">${m.val} <span class="text-[9px] font-normal text-slate-400">${m.unit}</span></div>
+              <div class="text-[9px] mt-1 ${badgeColor} rounded py-0.2 font-bold">${m.isUl ? `佔上限 ${pct}%` : `達標 ${pct}%`}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      updateDetailFullTable(ratio);
+    }
+
+    function updateDetailFullTable(ratio) {
+      if (!currentDetailFood) return;
+      const f = currentDetailFood;
+
+      const genEl = document.getElementById('fullNutrientsGeneral');
+      const minEl = document.getElementById('fullNutrientsMinerals');
+      const vitEl = document.getElementById('fullNutrientsVitamins');
+
+      if (genEl) {
+        genEl.innerHTML = `
+          <div>水分：<span class="font-mono font-bold">${(f.water * ratio).toFixed(1)}</span> g</div>
+          <div>糖質：<span class="font-mono font-bold">${(f.sugar * ratio).toFixed(1)}</span> g</div>
+          <div>飽和脂肪：<span class="font-mono font-bold">${(f.satFat * ratio).toFixed(1)}</span> g</div>
+          <div>單元不飽和：<span class="font-mono font-bold">${(f.mufa * ratio).toFixed(1)}</span> g</div>
+          <div>多元不飽和：<span class="font-mono font-bold">${(f.pufa * ratio).toFixed(1)}</span> g</div>
+          <div>膽固醇：<span class="font-mono font-bold">${Math.round(f.chol * ratio)}</span> mg</div>
+          <div>灰分：<span class="font-mono font-bold">${(f.ash * ratio).toFixed(1)}</span> g</div>
+        `;
+      }
+
+      if (minEl) {
+        minEl.innerHTML = `
+          <div>鎂 (Mg)：<span class="font-mono font-bold">${Math.round(f.mg * ratio)}</span> mg</div>
+          <div>磷 (P)：<span class="font-mono font-bold">${Math.round(f.p * ratio)}</span> mg</div>
+          <div>鋅 (Zn)：<span class="font-mono font-bold">${(f.zn * ratio).toFixed(1)}</span> mg</div>
+          <div>銅 (Cu)：<span class="font-mono font-bold">${(f.cu * ratio).toFixed(2)}</span> mg</div>
+          <div>錳 (Mn)：<span class="font-mono font-bold">${(f.mn * ratio).toFixed(2)}</span> mg</div>
+          <div>鉀 (K)：<span class="font-mono font-bold">${Math.round(f.k * ratio)}</span> mg</div>
+        `;
+      }
+
+      if (vitEl) {
+        vitEl.innerHTML = `
+          <div>維生素 A：<span class="font-mono font-bold">${Math.round(f.vitA * ratio)}</span> ug RAE</div>
+          <div>葉酸：<span class="font-mono font-bold">${Math.round(f.folate * ratio)}</span> mcg</div>
+          <div>維生素 D：<span class="font-mono font-bold">${(f.vitD * ratio).toFixed(2)}</span> ug</div>
+          <div>維生素 E：<span class="font-mono font-bold">${(f.vitE * ratio).toFixed(1)}</span> mg</div>
+          <div>維生素 B1：<span class="font-mono font-bold">${(f.vitB1 * ratio).toFixed(2)}</span> mg</div>
+          <div>維生素 B2：<span class="font-mono font-bold">${(f.vitB2 * ratio).toFixed(2)}</span> mg</div>
+          <div>菸鹼素：<span class="font-mono font-bold">${(f.niacin * ratio).toFixed(1)}</span> mg</div>
+          <div>維生素 B6：<span class="font-mono font-bold">${(f.vitB6 * ratio).toFixed(2)}</span> mg</div>
+          <div>維生素 B12：<span class="font-mono font-bold">${(f.vitB12 * ratio).toFixed(2)}</span> ug</div>
+        `;
+      }
+    }
+
+    function renderDetailSimilarFoods() {
+      const container = document.getElementById('detailSimilarFoodsContainer');
+      if (!container || !currentDetailFood) return;
+
+      const base = currentDetailFood;
+      const candidates = FOOD_ITEMS.filter(item => item.id !== base.id);
+
+      const scored = candidates.map(item => {
+        const dPro = Math.pow((item.pro - base.pro) / 15, 2);
+        const dFat = Math.pow((item.fat - base.fat) / 10, 2);
+        const dCho = Math.pow((item.cho - base.cho) / 25, 2);
+        const dFiber = Math.pow((item.fiber - base.fiber) / 5, 2);
+        const dKcal = Math.pow((item.kcal - base.kcal) / 100, 2);
+
+        const dist = Math.sqrt(dPro + dFat + dCho + dFiber + dKcal);
+        const similarity = Math.max(10, Math.round(100 - dist * 16));
+
+        return { food: item, similarity: similarity };
+      });
+
+      scored.sort((a, b) => b.similarity - a.similarity);
+      const topSimilar = scored.slice(0, 4);
+
+      container.innerHTML = topSimilar.map(s => `
+        <div class="touch-press flex-shrink-0 bg-white border border-slate-200 rounded-xl p-2 cursor-pointer hover:border-emerald-400 transition text-center min-w-[105px] shadow-2xs" onclick="openFoodDetail('${s.food.id}')">
+          <span class="text-xl block mb-0.5">${s.food.icon}</span>
+          <span class="text-[11px] font-bold text-slate-800 block truncate">${s.food.name}</span>
+          <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-bold inline-block mt-0.5">相似度 ${s.similarity}%</span>
+        </div>
+      `).join('');
+    }
+
+    function populateCompareSelects() {
+      const selA = document.getElementById('selectCompareFoodA');
+      const selB = document.getElementById('selectCompareFoodB');
+      if (!selA || !selB) return;
+
+      if (FOOD_ITEMS.length === 0) {
+        selA.innerHTML = '<option value="">資料庫載入中...</option>';
+        selB.innerHTML = '<option value="">資料庫載入中...</option>';
+        return;
+      }
+
+      const opts = FOOD_ITEMS.map(f => `<option value="${f.id}">${f.icon} ${f.name} (${f.catName})</option>`).join('');
+      selA.innerHTML = opts;
+      selB.innerHTML = opts;
+
+      if (!compSlotA.foodId || !FOOD_ITEMS.some(f => f.id === compSlotA.foodId)) {
+        compSlotA.foodId = FOOD_ITEMS[0].id;
+      }
+      if (!compSlotB.foodId || !FOOD_ITEMS.some(f => f.id === compSlotB.foodId)) {
+        compSlotB.foodId = FOOD_ITEMS[1] ? FOOD_ITEMS[1].id : FOOD_ITEMS[0].id;
+      }
+
+      selA.value = compSlotA.foodId;
+      selB.value = compSlotB.foodId;
+    }
+
+    function renderCompareView() {
+      if (FOOD_ITEMS.length === 0) {
+        const tableContainer = document.getElementById('compareTableContainer');
+        if (tableContainer) {
+          tableContainer.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">正在等待雲端資料庫連線載入...</div>';
+        }
+        return;
+      }
+
+      const foodA = FOOD_ITEMS.find(f => f.id === compSlotA.foodId) || FOOD_ITEMS[0];
+      const foodB = FOOD_ITEMS.find(f => f.id === compSlotB.foodId) || FOOD_ITEMS[1] || FOOD_ITEMS[0];
+
+      const gramsA = compMode === '100g' ? 100 : compSlotA.grams;
+      const gramsB = compMode === '100g' ? 100 : compSlotB.grams;
+
+      const ratioA = gramsA / 100;
+      const ratioB = gramsB / 100;
+
+      const badgeA = document.getElementById('compSlotAPortionBadge');
+      const descA = document.getElementById('compSlotAConditionDesc');
+      const badgeB = document.getElementById('compSlotBPortionBadge');
+      const descB = document.getElementById('compSlotBConditionDesc');
+
+      if (badgeA) badgeA.textContent = `${Math.round(gramsA)}g`;
+      if (descA) descA.textContent = compMode === '100g' ? '每 100g 基準' : compSlotA.conditionDesc;
+      if (badgeB) badgeB.textContent = `${Math.round(gramsB)}g`;
+      if (descB) descB.textContent = compMode === '100g' ? '每 100g 基準' : compSlotB.conditionDesc;
+
+      const tableContainer = document.getElementById('compareTableContainer');
+      if (!tableContainer) return;
+
+      // 包含資料庫中所有檢驗成分的完整比較指標清單
+      const fullCompareMetrics = [
+        // 三大營養素與能量
+        { label: '熱量 (Kcal)', key: 'kcal', unit: 'kcal', lowerBetter: true, dec: 0, group: '三大營養素與熱量' },
+        { label: '粗蛋白質', key: 'pro', unit: 'g', lowerBetter: false, dec: 1, group: '三大營養素與熱量' },
+        { label: '總碳水化合物', key: 'cho', unit: 'g', lowerBetter: false, dec: 1, group: '三大營養素與熱量' },
+        { label: '粗脂肪', key: 'fat', unit: 'g', lowerBetter: true, dec: 1, group: '三大營養素與熱量' },
+        { label: '膳食纖維', key: 'fiber', unit: 'g', lowerBetter: false, dec: 1, group: '三大營養素與熱量' },
+        { label: '糖質總量', key: 'sugar', unit: 'g', lowerBetter: true, dec: 1, group: '三大營養素與熱量' },
+        
+        // 基本物性與脂質分析
+        { label: '水分含量 (Water)', key: 'water', unit: 'g', lowerBetter: false, dec: 1, group: '物性與脂肪酸分析' },
+        { label: '灰分含量 (Ash)', key: 'ash', unit: 'g', lowerBetter: false, dec: 1, group: '物性與脂肪酸分析' },
+        { label: '飽和脂肪酸 (SFA)', key: 'satFat', unit: 'g', lowerBetter: true, dec: 1, group: '物性與脂肪酸分析' },
+        { label: '單元不飽和脂肪 (MUFA)', key: 'mufa', unit: 'g', lowerBetter: false, dec: 1, group: '物性與脂肪酸分析' },
+        { label: '多元不飽和脂肪 (PUFA)', key: 'pufa', unit: 'g', lowerBetter: false, dec: 1, group: '物性與脂肪酸分析' },
+        { label: '膽固醇', key: 'chol', unit: 'mg', lowerBetter: true, dec: 0, group: '物性與脂肪酸分析' },
+
+        // 礦物質與電解質
+        { label: '鈉含量 (Na)', key: 'na', unit: 'mg', lowerBetter: true, dec: 0, group: '礦物質與微量元素' },
+        { label: '鉀離子 (K)', key: 'k', unit: 'mg', lowerBetter: false, dec: 0, group: '礦物質與微量元素' },
+        { label: '鈣質 (Ca)', key: 'ca', unit: 'mg', lowerBetter: false, dec: 0, group: '礦物質與微量元素' },
+        { label: '鎂 (Mg)', key: 'mg', unit: 'mg', lowerBetter: false, dec: 0, group: '礦物質與微量元素' },
+        { label: '磷 (P)', key: 'p', unit: 'mg', lowerBetter: false, dec: 0, group: '礦物質與微量元素' },
+        { label: '鐵質 (Fe)', key: 'fe', unit: 'mg', lowerBetter: false, dec: 1, group: '礦物質與微量元素' },
+        { label: '鋅 (Zn)', key: 'zn', unit: 'mg', lowerBetter: false, dec: 1, group: '礦物質與微量元素' },
+        { label: '銅 (Cu)', key: 'cu', unit: 'mg', lowerBetter: false, dec: 2, group: '礦物質與微量元素' },
+        { label: '錳 (Mn)', key: 'mn', unit: 'mg', lowerBetter: false, dec: 2, group: '礦物質與微量元素' },
+
+        // 維生素全項分析
+        { label: '維生素 A 總量', key: 'vitA', unit: 'ug RAE', lowerBetter: false, dec: 0, group: '維生素群全分析' },
+        { label: 'α-胡蘿蔔素', key: 'alphaCaro', unit: 'ug', lowerBetter: false, dec: 0, group: '維生素群全分析' },
+        { label: 'β-胡蘿蔔素', key: 'betaCaro', unit: 'ug', lowerBetter: false, dec: 0, group: '維生素群全分析' },
+        { label: '維生素 D', key: 'vitD', unit: 'ug', lowerBetter: false, dec: 2, group: '維生素群全分析' },
+        { label: '維生素 E', key: 'vitE', unit: 'mg', lowerBetter: false, dec: 1, group: '維生素群全分析' },
+        { label: '維生素 B1', key: 'vitB1', unit: 'mg', lowerBetter: false, dec: 2, group: '維生素群全分析' },
+        { label: '維生素 B2', key: 'vitB2', unit: 'mg', lowerBetter: false, dec: 2, group: '維生素群全分析' },
+        { label: '菸鹼素 (Niacin)', key: 'niacin', unit: 'mg', lowerBetter: false, dec: 2, group: '維生素群全分析' },
+        { label: '維生素 B6', key: 'vitB6', unit: 'mg', lowerBetter: false, dec: 2, group: '維生素群全分析' },
+        { label: '維生素 B12', key: 'vitB12', unit: 'ug', lowerBetter: false, dec: 2, group: '維生素群全分析' },
+        { label: '葉酸 (Folate)', key: 'folate', unit: 'mcg', lowerBetter: false, dec: 0, group: '維生素群全分析' },
+        { label: '維生素 C', key: 'vitC', unit: 'mg', lowerBetter: false, dec: 0, group: '維生素群全分析' }
+      ];
+
+      let lastGroup = '';
+      let html = '';
+
+      fullCompareMetrics.forEach(m => {
+        if (m.group !== lastGroup) {
+          lastGroup = m.group;
+          html += `
+            <div class="px-3 py-1.5 bg-slate-100 font-black text-[10px] text-slate-600 tracking-wider">
+              🔹 ${m.group}
+            </div>
+          `;
+        }
+
+        const rawA = (foodA[m.key] !== undefined ? foodA[m.key] : 0) * ratioA;
+        const rawB = (foodB[m.key] !== undefined ? foodB[m.key] : 0) * ratioB;
+
+        const vA = Number(rawA.toFixed(m.dec));
+        const vB = Number(rawB.toFixed(m.dec));
+
+        let aWins = false;
+        let bWins = false;
+
+        if (m.lowerBetter) {
+          if (vA < vB) aWins = true;
+          else if (vB < vA) bWins = true;
+        } else {
+          if (vA > vB) aWins = true;
+          else if (vB > vA) bWins = true;
+        }
+
+        html += `
+          <div class="p-2.5 flex items-center justify-between hover:bg-slate-50/70 transition">
+            <div class="w-28 text-left ${aWins ? 'font-black text-emerald-700' : 'text-slate-600'}">
+              <span>${vA}</span> <span class="text-[9px] text-slate-400">${m.unit}</span>
+              ${aWins ? '<span class="text-[9px] bg-emerald-100 text-emerald-800 px-1 rounded ml-1 font-bold">優</span>' : ''}
+            </div>
+            <div class="flex-1 text-center font-bold text-slate-700 text-[11px] truncate">
+              ${m.label}
+            </div>
+            <div class="w-28 text-right ${bWins ? 'font-black text-amber-700' : 'text-slate-600'}">
+              ${bWins ? '<span class="text-[9px] bg-amber-100 text-amber-800 px-1 rounded mr-1 font-bold">優</span>' : ''}
+              <span>${vB}</span> <span class="text-[9px] text-slate-400">${m.unit}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      tableContainer.innerHTML = html;
+
+      const simContainer = document.getElementById('compareSimilarContainer');
+      if (simContainer) {
+        const candidates = FOOD_ITEMS.filter(f => f.id !== foodA.id && f.id !== foodB.id);
+        candidates.sort((a, b) => Math.abs(a.kcal - foodA.kcal) - Math.abs(b.kcal - foodA.kcal));
+        const top2 = candidates.slice(0, 2);
+
+        simContainer.innerHTML = top2.map(f => `
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center space-x-2">
+            <span class="text-xl">${f.icon}</span>
+            <div class="truncate flex-1">
+              <span class="font-bold text-slate-800 text-[11px] block truncate">${f.name}</span>
+              <span class="text-[9px] text-slate-400 font-mono">${f.kcal} kcal · ${f.pro}g P</span>
+            </div>
+            <button class="touch-press px-1.5 py-1 rounded bg-indigo-50 text-indigo-700 text-[9px] font-bold border border-indigo-200" onclick="setCompareSlot('B', '${f.id}', 100, '快速替換')">
+              選入
+            </button>
+          </div>
+        `).join('');
+      }
+    }
+
+    function setCompareSlot(slot, foodId, grams, conditionDesc) {
+      if (slot === 'A') {
+        compSlotA = { foodId, grams, conditionDesc };
+      } else {
+        compSlotB = { foodId, grams, conditionDesc };
+      }
+      populateCompareSelects();
+      renderCompareView();
+    }
+
+    function updateAnalysisBasketBadge() {
+      const badge = document.getElementById('navAnalysisBadge');
+      if (!badge) return;
+      if (analysisBasket.length > 0) {
+        badge.textContent = analysisBasket.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function renderAnalysisView() {
+      const container = document.getElementById('analysisBasketItemsList');
+      if (!container) return;
+
+      if (analysisBasket.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 text-center text-slate-400 space-y-2">
+            <i class="ph ph-shopping-cart text-3xl text-slate-300"></i>
+            <p class="font-bold text-xs text-slate-600">飲食分析清單目前為空</p>
+            <p class="text-[10px] text-slate-400">請至「食材速查」點選任何食材，並點擊「以當前設定加入分析」。</p>
+          </div>
+        `;
+        renderAnalysisMetricsEmpty();
+        return;
+      }
+
+      container.innerHTML = analysisBasket.map((b, idx) => {
+        const f = b.food;
+        const ratio = (b.portionGrams || 100) / 100;
+        const cal = Math.round(f.kcal * ratio);
+        const p = (f.pro * ratio).toFixed(1);
+
+        return `
+          <div class="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+            <div class="flex items-center space-x-2.5 flex-1 min-w-0 mr-2">
+              <span class="text-2xl flex-shrink-0">${f.icon}</span>
+              <div class="truncate">
+                <h4 class="font-bold text-slate-800 text-xs truncate">${f.name}</h4>
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5">
+                  <span>${cal} kcal</span> · <span>${p}g 蛋白質</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-1.5 flex-shrink-0">
+              <div class="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-1">
+                <button class="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center shadow-2xs transition" onclick="adjustBasketItemPortion(${idx}, -25)" title="減少 25g">-</button>
+                <div class="flex items-center">
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="any"
+                    value="${b.portionGrams}" 
+                    class="w-14 text-center font-black font-mono text-xs text-slate-800 bg-white border border-slate-200 rounded-lg py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs" 
+                    onchange="updateBasketItemPortion(${idx}, this.value)"
+                    onkeyup="if(event.key==='Enter') this.blur();"
+                    title="點擊手動輸入精確克數 (g)"
+                  />
+                  <span class="text-[10px] font-bold text-slate-500 ml-1 mr-0.5">g</span>
+                </div>
+                <button class="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center shadow-2xs transition" onclick="adjustBasketItemPortion(${idx}, 25)" title="增加 25g">+</button>
+              </div>
+              <button class="text-slate-300 hover:text-red-500 p-1 transition" onclick="removeBasketItem(${idx})" title="刪除此項">
+                <i class="ph ph-trash text-sm"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      renderAnalysisCalculations();
+    }
+
+    function updateBasketItemPortion(index, val) {
+      if (!analysisBasket[index]) return;
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed) && parsed > 0) {
+        analysisBasket[index].portionGrams = Math.round(parsed * 10) / 10;
+      } else {
+        analysisBasket[index].portionGrams = 100;
+      }
+      renderAnalysisView();
+    }
+
+    function adjustBasketItemPortion(index, delta) {
+      if (!analysisBasket[index]) return;
+      const current = analysisBasket[index].portionGrams || 100;
+      analysisBasket[index].portionGrams = Math.max(5, Math.round(current + delta));
+      renderAnalysisView();
+    }
+
+    function removeBasketItem(index) {
+      analysisBasket.splice(index, 1);
+      updateAnalysisBasketBadge();
+      renderAnalysisView();
+    }
+
+    function renderAnalysisMetricsEmpty() {
+      const macroContainer = document.getElementById('macroBalanceBarsContainer');
+      const microContainer = document.getElementById('analysisMicronutrientsContainer');
+      if (macroContainer) macroContainer.innerHTML = '<p class="text-[10px] text-slate-400 text-center py-2">尚未加入餐食</p>';
+      if (microContainer) microContainer.innerHTML = '<p class="text-[10px] text-slate-400 text-center py-2">尚未加入餐食</p>';
+    }
+
+    function renderAnalysisCalculations() {
+      const std = getActiveDriStandards();
+      const totals = {
+        kcal: 0, pro: 0, fat: 0, cho: 0, fiber: 0,
+        na: 0, k: 0, ca: 0, mg: 0, p: 0, fe: 0, zn: 0,
+        vitA: 0, vitC: 0, folate: 0
+      };
+
+      analysisBasket.forEach(b => {
+        const f = b.food;
+        const ratio = (b.portionGrams || 100) / 100;
+        Object.keys(totals).forEach(k => {
+          totals[k] += ((f[k] !== undefined ? f[k] : 0) * ratio);
+        });
+      });
+
+      const proKcal = totals.pro * 4;
+      const fatKcal = totals.fat * 9;
+      const choKcal = totals.cho * 4;
+      const sumMacroKcal = proKcal + fatKcal + choKcal || 1;
+
+      const proPct = Math.round((proKcal / sumMacroKcal) * 100);
+      const fatPct = Math.round((fatKcal / sumMacroKcal) * 100);
+      const choPct = Math.round((choKcal / sumMacroKcal) * 100);
+
+      const macroBars = document.getElementById('macroBalanceBarsContainer');
+      if (macroBars) {
+        macroBars.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex justify-between text-[10px] font-bold">
+              <span class="text-blue-700">蛋白質 (PRO)：${Math.round(totals.pro)}g (${proPct}%)</span>
+              <span class="text-slate-400">標準：10-20%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: ${Math.min(100, proPct * 3)}%"></div>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-[10px] font-bold">
+              <span class="text-purple-700">脂肪 (FAT)：${Math.round(totals.fat)}g (${fatPct}%)</span>
+              <span class="text-slate-400">標準：20-30%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div class="bg-purple-600 h-full rounded-full transition-all duration-300" style="width: ${Math.min(100, fatPct * 2.5)}%"></div>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-[10px] font-bold">
+              <span class="text-emerald-700">碳水化合物 (CHO)：${Math.round(totals.cho)}g (${choPct}%)</span>
+              <span class="text-slate-400">標準：50-60%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div class="bg-emerald-600 h-full rounded-full transition-all duration-300" style="width: ${Math.min(100, choPct * 1.5)}%"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      const microContainer = document.getElementById('analysisMicronutrientsContainer');
+      if (microContainer) {
+        const rows = [
+          { label: '熱量需求', current: Math.round(totals.kcal), target: std.eer, unit: 'kcal' },
+          { label: '鈣質 (Ca)', current: Math.round(totals.ca), target: std.ca, unit: 'mg' },
+          { label: '鐵質 (Fe)', current: (totals.fe).toFixed(1), target: std.fe, unit: 'mg' },
+          { label: '膳食纖維', current: (totals.fiber).toFixed(1), target: std.fiber, unit: 'g' },
+          { label: '維生素 C', current: Math.round(totals.vitC), target: std.vitC, unit: 'mg' },
+          { label: '鈉攝取上限', current: Math.round(totals.na), target: 2300, unit: 'mg', isUl: true }
+        ];
+
+        microContainer.innerHTML = rows.map(r => {
+          const pct = Math.round((r.current / r.target) * 100);
+          let barColor = 'bg-emerald-500';
+          if (r.isUl) {
+            barColor = r.current > 2300 ? 'bg-red-500' : 'bg-slate-400';
+          } else if (pct < 50) {
+            barColor = 'bg-amber-400';
+          }
+
+          return `
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] font-bold">
+                <span class="text-slate-700">${r.label}：${r.current} / ${r.target} ${r.unit}</span>
+                <span class="${r.isUl && r.current > 2300 ? 'text-red-600 font-black' : 'text-slate-500'} font-mono">${pct}%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div class="${barColor} h-full rounded-full transition-all duration-300" style="width: ${Math.min(100, pct)}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function generateLocalClinicalReport() {
+      if (analysisBasket.length === 0) return;
+
+      const modal = document.getElementById('modalAiReport');
+      const content = document.getElementById('aiReportContentArea');
+      if (!modal || !content) return;
+
+      modal.classList.remove('hidden');
+
+      const std = getActiveDriStandards();
+      const totals = {
+        kcal: 0, pro: 0, fat: 0, cho: 0, fiber: 0,
+        na: 0, k: 0, ca: 0, mg: 0, fe: 0, zn: 0, vitA: 0, vitC: 0
+      };
+
+      analysisBasket.forEach(b => {
+        const f = b.food;
+        const ratio = (b.portionGrams || 100) / 100;
+        Object.keys(totals).forEach(k => {
+          totals[k] += ((f[k] !== undefined ? f[k] : 0) * ratio);
+        });
+      });
+
+      const totalKcal = Math.round(totals.kcal);
+      const proKcal = totals.pro * 4;
+      const fatKcal = totals.fat * 9;
+      const choKcal = totals.cho * 4;
+      const sumMacroKcal = proKcal + fatKcal + choKcal || 1;
+
+      const proPct = Math.round((proKcal / sumMacroKcal) * 100);
+      const fatPct = Math.round((fatKcal / sumMacroKcal) * 100);
+      const choPct = Math.round((choKcal / sumMacroKcal) * 100);
+
+      const caPct = Math.round((totals.ca / std.ca) * 100);
+      const fePct = Math.round((totals.fe / std.fe) * 100);
+      const fiberPct = Math.round((totals.fiber / std.fiber) * 100);
+      const naVal = Math.round(totals.na);
+
+      const highlights = [];
+      const warnings = [];
+      const tips = [];
+
+      const kcalPct = Math.round((totalKcal / std.eer) * 100);
+      if (kcalPct < 70) {
+        warnings.push(`熱量攝取偏低（達成率 ${kcalPct}%，提供 ${totalKcal} / 目標 ${std.eer} kcal），建議適量補充未精緻主食。`);
+      } else if (kcalPct > 115) {
+        warnings.push(`熱量略超出建議標準（達成率 ${kcalPct}%），需注意高脂或煎炸食材比重。`);
+      } else {
+        highlights.push(`熱量攝取適當（達成率 ${kcalPct}%，提供 ${totalKcal} kcal），符合國人建議能量區間。`);
+      }
+
+      if (proPct >= 10 && proPct <= 25 && fatPct <= 35 && choPct >= 45) {
+        highlights.push(`三大營養素比例健康平衡（蛋白質 ${proPct}%、脂肪 ${fatPct}%、碳水 ${choPct}%）。`);
+      } else {
+        let note = `三大營養素比例為 蛋白質 ${proPct}% : 脂肪 ${fatPct}% : 碳水 ${choPct}%。`;
+        if (fatPct > 35) note += ' 脂肪佔比略高。';
+        warnings.push(note);
+      }
+
+      if (naVal > 2300) {
+        warnings.push(`⚠️ 鈉含量高達 ${naVal} mg，已超出衛福部每日建議上限 2,300 mg。`);
+      } else {
+        highlights.push(`鈉攝取量控制理想（${naVal} mg / 上限 2,300 mg）。`);
+      }
+
+      if (caPct < 60) {
+        warnings.push(`鈣質攝取偏低（達標 ${caPct}%，提供 ${Math.round(totals.ca)} / ${std.ca} mg）。`);
+        tips.push('補鈣良方：推薦補充傳統板豆腐、全脂鮮乳、黑芝麻。');
+      } else {
+        highlights.push(`鈣質攝取充足（達成率 ${caPct}%）。`);
+      }
+
+      if (fePct < 60) {
+        warnings.push(`鐵質攝取不足（達標 ${fePct}%，提供 ${(totals.fe).toFixed(1)} / ${std.fe} mg）。`);
+        tips.push('補鐵良方：可適量攝取文蛤、菠菜、牛腱或豬後腿瘦肉。');
+      } else {
+        highlights.push(`鐵質攝取豐富（達成率 ${fePct}%）。`);
+      }
+
+      if (fiberPct < 60) {
+        warnings.push(`膳食纖維偏低（達標 ${fiberPct}%，提供 ${(totals.fiber).toFixed(1)} / ${std.fiber} g）。`);
+        tips.push('高纖良方：可增加綠花椰菜、芭樂或未精緻全穀物。');
+      } else {
+        highlights.push(`膳食纖維攝取豐富（達標 ${fiberPct}%）。`);
+      }
+
+      content.innerHTML = `
+        <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-slate-800">${userProfile.gender === 'female' ? '女性' : '男性'} · ${userProfile.ageGroup}歲 · ${userProfile.activity === 'light' ? '輕度活動' : '中重度活動'}</div>
+            <div class="text-[9px] text-slate-400">生理條件：${userProfile.pregnancy === 'none' ? '一般成人' : '孕哺特別期'} · 飲食項數：${analysisBasket.length} 項</div>
+          </div>
+          <span class="text-emerald-700 bg-emerald-100 font-bold px-2 py-0.5 rounded-full text-[9px]">即時評估</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5 text-center">
+          <div class="bg-blue-50 border border-blue-200 p-1.5 rounded-xl">
+            <div class="text-[9px] text-blue-700 font-bold">蛋白質比</div>
+            <div class="text-xs font-black text-blue-900 mt-0.5">${proPct}%</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 p-1.5 rounded-xl">
+            <div class="text-[9px] text-emerald-700 font-bold">碳水化合物比</div>
+            <div class="text-xs font-black text-emerald-900 mt-0.5">${choPct}%</div>
+          </div>
+          <div class="bg-purple-50 border border-purple-200 p-1.5 rounded-xl">
+            <div class="text-[9px] text-purple-700 font-bold">脂肪比</div>
+            <div class="text-xs font-black text-purple-900 mt-0.5">${fatPct}%</div>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <h4 class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+            <i class="ph ph-check-circle text-emerald-600"></i>
+            <span>飲食優勢亮點</span>
+          </h4>
+          <ul class="space-y-1 text-[10px] text-slate-600 pl-1">
+            ${highlights.map(h => `<li class="flex items-start gap-1"><span class="text-emerald-500 font-bold">✓</span><span>${h}</span></li>`).join('')}
+          </ul>
+        </div>
+
+        <div class="space-y-1">
+          <h4 class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+            <i class="ph ph-warning-circle text-amber-600"></i>
+            <span>需留意的營養缺口與警示</span>
+          </h4>
+          <ul class="space-y-1 text-[10px] text-slate-600 pl-1">
+            ${warnings.length > 0 ? warnings.map(w => `<li class="flex items-start gap-1"><span class="text-amber-500 font-bold">!</span><span>${w}</span></li>`).join('') : '<li class="text-slate-400">目前各項關鍵指標皆在理想標準內！</li>'}
+          </ul>
+        </div>
+
+        ${tips.length > 0 ? `
+          <div class="bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-xl space-y-1">
+            <h4 class="font-bold text-emerald-900 text-[11px] flex items-center gap-1">
+              <i class="ph ph-lightbulb text-emerald-600"></i>
+              <span>營養師食材補強建議清單</span>
+            </h4>
+            <div class="space-y-0.5 text-[9px] text-emerald-800">
+              ${tips.map(t => `<p>• ${t}</p>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+      `;
+    }
+
+    function exportDatabaseCsv() {
+      if (FOOD_ITEMS.length === 0) {
+        return;
+      }
+
+      const headers = [
+        "ID", "食材名稱", "分類", "熱量(kcal)", "水分(g)", "粗蛋白(g)", "粗脂肪(g)",
+        "飽和脂肪(g)", "單元不飽和(g)", "多元不飽和(g)", "膽固醇(mg)", "碳水化合物(g)",
+        "膳食纖維(g)", "糖質總量(g)", "灰分(g)", "鈉(mg)", "鉀(mg)", "鈣(mg)", "鎂(mg)",
+        "磷(mg)", "鐵(mg)", "鋅(mg)", "維生素A(ug)", "維生素C(mg)", "葉酸(mcg)"
+      ];
+
+      const rows = FOOD_ITEMS.map(f => [
+        f.id, `"${f.name}"`, `"${f.catName}"`, f.kcal, f.water, f.pro, f.fat,
+        f.satFat, f.mufa, f.pufa, f.chol, f.cho,
+        f.fiber, f.sugar, f.ash, f.na, f.k, f.ca, f.mg,
+        f.p, f.fe, f.zn, f.vitA, f.vitC, f.folate
+      ]);
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "台灣食材營養成分資料庫_TFDA_雲端同步.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwrMxf3V4oXl3DMcrNs3EU2aD3n6_-B8YrK5MzIxwKSWpYGPe6e1TvQgaWnjdh0HzRK/exec";
+
+    function parseNumericField(val, fallback = 0) {
+      if (val === undefined || val === null || val === "" || val === "-") return fallback;
+      const parsed = parseFloat(String(val).replace(/,/g, '').trim());
+      return isNaN(parsed) ? fallback : parsed;
+    }
+
+    function applyCloudDrisData(drisList) {
+      if (!Array.isArray(drisList) || drisList.length === 0) return false;
+      
+      const newRules = { female: {}, male: {} };
+      let appliedCount = 0;
+
+      drisList.forEach(row => {
+        const rawGender = String(row.gender || row["性別"] || "").toLowerCase().trim();
+        const gender = (rawGender === "female" || rawGender === "女性" || rawGender === "女") ? "female" : "male";
+        const age = String(row.ageGroup || row["年齡層"] || row["年齡組"] || row["年齡"] || "").trim();
+
+        if (age) {
+          newRules[gender][age] = {
+            eer: parseNumericField(row.eer ?? row["熱量"] ?? row["EER"]),
+            pro: parseNumericField(row.pro ?? row["蛋白質"] ?? row["粗蛋白"]),
+            fiber: parseNumericField(row.fiber ?? row["膳食纖維"]),
+            ca: parseNumericField(row.ca ?? row["鈣"]),
+            fe: parseNumericField(row.fe ?? row["鐵"]),
+            zn: parseNumericField(row.zn ?? row["鋅"]),
+            mg: parseNumericField(row.mg ?? row["鎂"]),
+            k: parseNumericField(row.k ?? row["鉀"]),
+            na: parseNumericField(row.na ?? row["鈉"] ?? 2300),
+            vitA: parseNumericField(row.vitA ?? row["維生素A"]),
+            vitC: parseNumericField(row.vitC ?? row["維生素C"]),
+            vitD: parseNumericField(row.vitD ?? row["維生素D"]),
+            folate: parseNumericField(row.folate ?? row["葉酸"])
+          };
+          appliedCount++;
+        }
+      });
+
+      if (appliedCount > 0) {
+        DRIS_RULES.female = { ...DRIS_RULES.female, ...newRules.female };
+        DRIS_RULES.male = { ...DRIS_RULES.male, ...newRules.male };
+        isCloudDrisLoaded = true;
+        return true;
+      }
+      return false;
+    }
+
+    function normalizeFoodItem(item, idx) {
+      const name = item.name || item["樣品名稱"] || item["食品名稱"] || item["名稱"] || item["品名"] || `食材_${idx + 1}`;
+      const cat = item.catName || item["食品分類"] || item["分類"] || item["大類"] || item["類別"] || item["分類名稱"] || "其他";
+
+      return {
+        id: item.id || item["整合編號"] || item["樣品編號"] || item["編號"] || `sheet_${idx + 1}`,
+        name: String(name).trim(),
+        icon: item.icon || guessFoodEmoji(name, cat),
+        catName: String(cat).trim(),
+        kcal: parseNumericField(item.kcal ?? item["熱量(kcal)"] ?? item["熱量(Kcal)"] ?? item["熱量"] ?? item["熱量 (kcal)"]),
+        water: parseNumericField(item.water ?? item["水分(g)"] ?? item["水分"] ?? item["水分 (g)"]),
+        pro: parseNumericField(item.pro ?? item["粗蛋白(g)"] ?? item["蛋白質(g)"] ?? item["粗蛋白質(g)"] ?? item["粗蛋白"] ?? item["蛋白質"]),
+        fat: parseNumericField(item.fat ?? item["粗脂肪(g)"] ?? item["脂肪(g)"] ?? item["粗脂肪"] ?? item["脂肪"]),
+        satFat: parseNumericField(item.satFat ?? item["飽和脂肪(g)"] ?? item["飽和脂肪酸(g)"] ?? item["飽和脂肪酸"] ?? item["飽和脂肪"]),
+        mufa: parseNumericField(item.mufa ?? item["單元不飽和脂肪(g)"] ?? item["單元不飽和脂肪酸(g)"] ?? item["單元不飽和脂肪酸"]),
+        pufa: parseNumericField(item.pufa ?? item["多元不飽和脂肪(g)"] ?? item["多元不飽和脂肪酸(g)"] ?? item["多元不飽和脂肪酸"]),
+        chol: parseNumericField(item.chol ?? item["膽固醇(mg)"] ?? item["膽固醇"]),
+        cho: parseNumericField(item.cho ?? item["總碳水化合物(g)"] ?? item["碳水化合物(g)"] ?? item["碳水化合物"] ?? item["碳水"]),
+        fiber: parseNumericField(item.fiber ?? item["膳食纖維(g)"] ?? item["膳食纖維"] ?? item["纖維"]),
+        sugar: parseNumericField(item.sugar ?? item["糖質總量(g)"] ?? item["糖質(g)"] ?? item["糖質總量"] ?? item["糖質"] ?? item["糖分"]),
+        ash: parseNumericField(item.ash ?? item["灰分(g)"] ?? item["灰分"]),
+        na: parseNumericField(item.na ?? item["鈉(mg)"] ?? item["鈉"]),
+        k: parseNumericField(item.k ?? item["鉀(mg)"] ?? item["鉀"]),
+        ca: parseNumericField(item.ca ?? item["鈣(mg)"] ?? item["鈣"]),
+        mg: parseNumericField(item.mg ?? item["鎂(mg)"] ?? item["鎂"]),
+        p: parseNumericField(item.p ?? item["磷(mg)"] ?? item["磷"]),
+        fe: parseNumericField(item.fe ?? item["鐵(mg)"] ?? item["鐵"]),
+        zn: parseNumericField(item.zn ?? item["鋅(mg)"] ?? item["鋅"]),
+        cu: parseNumericField(item.cu ?? item["銅(mg)"] ?? item["銅"]),
+        mn: parseNumericField(item.mn ?? item["錳(mg)"] ?? item["錳"]),
+        folate: parseNumericField(item.folate ?? item["葉酸(mcg)"] ?? item["葉酸(ug)"] ?? item["葉酸"]),
+        vitA: parseNumericField(item.vitA ?? item["維生素A總量(IU)"] ?? item["維生素A總量(ug RAE)"] ?? item["維生素A"]),
+        alphaCaro: parseNumericField(item.alphaCaro ?? item["α-胡蘿蔔素(ug)"] ?? item["α-胡蘿蔔素"]),
+        betaCaro: parseNumericField(item.betaCaro ?? item["β-胡蘿蔔素(ug)"] ?? item["β-胡蘿蔔素"]),
+        vitD: parseNumericField(item.vitD ?? item["維生素D總量(IU)"] ?? item["維生素D總量(ug)"] ?? item["維生素D"]),
+        vitE: parseNumericField(item.vitE ?? item["維生素E總量(mg)"] ?? item["維生素E"]),
+        vitB1: parseNumericField(item.vitB1 ?? item["維生素B1(mg)"] ?? item["維生素B1"]),
+        vitB2: parseNumericField(item.vitB2 ?? item["維生素B2(mg)"] ?? item["維生素B2"]),
+        niacin: parseNumericField(item.niacin ?? item["菸鹼素(mg)"] ?? item["菸鹼素"]),
+        vitB6: parseNumericField(item.vitB6 ?? item["維生素B6(mg)"] ?? item["維生素B6"]),
+        vitB12: parseNumericField(item.vitB12 ?? item["維生素B12(ug)"] ?? item["維生素B12"]),
+        vitC: parseNumericField(item.vitC ?? item["維生素C(mg)"] ?? item["維生素C"]),
+        note: item.note || item["俗名"] || item["樣品英文名稱"] || item["內容物描述"] || "Google 試算表雲端同步資料"
+      };
+    }
+
+    async function loadDatabaseFromGoogleSheets() {
+      const statusBadge = document.getElementById('driveSyncStatusBadge');
+      const statusText = document.getElementById('driveSyncStatusText');
+      const headerCloudBadge = document.getElementById('headerCloudBadge');
+      const headerCloudCount = document.getElementById('headerCloudCountText');
+      const drisSyncBox = document.getElementById('driveDrisSyncStatus');
+
+      if (statusBadge) {
+        statusBadge.textContent = "連線同步中...";
+        statusBadge.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800";
+      }
+      if (statusText) statusText.textContent = "正在向 Google 試算表端點要求純淨資料庫...";
+
+      try {
+        const res = await fetch(GOOGLE_SHEETS_WEB_APP_URL, { cache: 'no-cache' });
+        if (!res.ok) throw new Error("無法連接 Google 試算表端點");
+
+        const rawData = await res.json();
+        let sheetData = [];
+        let drisData = null;
+
+        if (Array.isArray(rawData)) {
+          sheetData = rawData;
+        } else if (rawData && typeof rawData === 'object') {
+          sheetData = rawData.foods || rawData.data || [];
+          drisData = rawData.dris || null;
+        }
+
+        if (Array.isArray(sheetData) && sheetData.length > 0) {
+          const normalized = sheetData.map((item, idx) => normalizeFoodItem(item, idx));
+          
+          FOOD_ITEMS.length = 0;
+          FOOD_ITEMS.push(...normalized);
+
+          refreshDatabaseCategories();
+          renderFoodList();
+          renderRankings();
+          populateCompareSelects();
+          renderCompareView();
+
+          let drisSynced = false;
+          if (drisData && Array.isArray(drisData) && drisData.length > 0) {
+            drisSynced = applyCloudDrisData(drisData);
+            if (drisSynced) {
+              updateProfileOverview();
+              renderAnalysisView();
+              if (currentDetailFood) updateDetailCalculations();
+            }
+          }
+
+          if (statusBadge) {
+            statusBadge.textContent = "同步成功";
+            statusBadge.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800";
+          }
+          if (statusText) {
+            statusText.textContent = `已成功載入試算表 ${FOOD_ITEMS.length} 筆食材 (共 ${dynamicCategories.length} 種純淨分類)`;
+          }
+          if (drisSyncBox) {
+            drisSyncBox.classList.toggle('hidden', !drisSynced);
+          }
+          if (headerCloudBadge && headerCloudCount) {
+            headerCloudBadge.classList.remove('hidden');
+            headerCloudCount.textContent = `雲端庫 (${FOOD_ITEMS.length})`;
+          }
+          return;
+        }
+      } catch (error) {
+        console.warn("Google 試算表同步失敗", error);
+      }
+
+      if (statusBadge) {
+        statusBadge.textContent = "連線中斷";
+        statusBadge.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700";
+      }
+      if (statusText) {
+        statusText.textContent = `資料庫連線失敗，請檢查網路連線或端點權限。`;
+      }
+      if (drisSyncBox) {
+        drisSyncBox.classList.add('hidden');
+      }
+    }
+
+    window.openFoodDetail = openFoodDetail;
+    window.setCompareSlot = setCompareSlot;
+    window.adjustBasketItemPortion = adjustBasketItemPortion;
+    window.updateBasketItemPortion = updateBasketItemPortion;
+    window.removeBasketItem = removeBasketItem;
+    window.loadDatabaseFromGoogleSheets = loadDatabaseFromGoogleSheets;
+
+    function initEventHandlers() {
+      // Tab switching
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute('data-target');
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+          document.querySelectorAll('.nav-tab').forEach(t => {
+            t.classList.remove('text-emerald-600', 'active');
+            t.classList.add('text-slate-400');
+          });
+
+          document.getElementById(target)?.classList.remove('hidden');
+          tab.classList.add('text-emerald-600', 'active');
+          tab.classList.remove('text-slate-400');
+
+          if (target === 'tabContentRank') renderRankings();
+          if (target === 'tabContentCompare') renderCompareView();
+          if (target === 'tabContentAnalysis') renderAnalysisView();
+        });
+      });
+
+      // Search input & clear
+      const inputSearch = document.getElementById('inputFoodSearch');
+      const btnClear = document.getElementById('btnClearSearch');
+
+      inputSearch?.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        btnClear?.classList.toggle('hidden', !searchQuery);
+        renderFoodList();
+      });
+
+      btnClear?.addEventListener('click', () => {
+        if (inputSearch) inputSearch.value = '';
+        searchQuery = '';
+        btnClear.classList.add('hidden');
+        renderFoodList();
+      });
+
+      // Search quick sort chips
+      document.querySelectorAll('.sort-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const sortKey = chip.getAttribute('data-sort');
+          const notice = document.getElementById('sortNoticeText');
+
+          if (activeSortNutrient === sortKey) {
+            activeSortNutrient = null;
+            chip.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');
+            chip.classList.add('bg-white', 'text-slate-600');
+            if (notice) notice.textContent = '依資料庫原序';
+          } else {
+            document.querySelectorAll('.sort-chip').forEach(c => {
+              c.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');
+              c.classList.add('bg-white', 'text-slate-600');
+            });
+            activeSortNutrient = sortKey;
+            chip.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');
+            chip.classList.remove('bg-white', 'text-slate-600');
+            if (notice) notice.textContent = `依 ${chip.textContent.trim()} 降冪排序`;
+          }
+          renderFoodList();
+        });
+      });
+
+      // Rank dimension selection
+      document.querySelectorAll('.rank-dim-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.rank-dim-btn').forEach(b => {
+            b.classList.remove('active', 'bg-white', 'text-amber-800', 'shadow-xs');
+            b.classList.add('text-slate-600');
+          });
+          btn.classList.add('active', 'bg-white', 'text-amber-800', 'shadow-xs');
+          btn.classList.remove('text-slate-600');
+
+          currentRankDim = btn.getAttribute('data-dim');
+          const conf = RANK_DIM_CONFIG[currentRankDim] || RANK_DIM_CONFIG.gram;
+          currentRankCustomVal = conf.defaultVal;
+
+          const inputEl = document.getElementById('inputRankCustomBaseVal');
+          if (inputEl) inputEl.value = currentRankCustomVal;
+
+          renderRankPresets();
+          renderRankings();
+        });
+      });
+
+      // Rank custom base value input
+      document.getElementById('inputRankCustomBaseVal')?.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val) && val > 0) {
+          currentRankCustomVal = val;
+          renderRankings();
+        }
+      });
+
+      // Rank sort order direction (Ascending / Descending)
+      document.getElementById('selectRankSortOrder')?.addEventListener('change', (e) => {
+        currentRankSortOrder = e.target.value || 'desc';
+        renderRankings();
+      });
+
+      // Rank min/max range inputs
+      document.getElementById('inputRankMinVal')?.addEventListener('input', () => { renderRankings(); });
+      document.getElementById('inputRankMaxVal')?.addEventListener('input', () => { renderRankings(); });
+      document.getElementById('btnResetRankRange')?.addEventListener('click', () => {
+        const minEl = document.getElementById('inputRankMinVal');
+        const maxEl = document.getElementById('inputRankMaxVal');
+        if (minEl) minEl.value = '';
+        if (maxEl) maxEl.value = '';
+        renderRankings();
+      });
+
+      // Rank quick buttons
+      document.querySelectorAll('.rank-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rankKey = btn.getAttribute('data-rank');
+          renderRankings(rankKey);
+        });
+      });
+
+      // Rank full comprehensive dropdown
+      document.getElementById('selectRankOtherNutrient')?.addEventListener('change', (e) => {
+        const selected = e.target.value;
+        if (selected) renderRankings(selected);
+      });
+
+      // Food detail drawer
+      document.getElementById('btnCloseFoodDetail')?.addEventListener('click', () => {
+        document.getElementById('drawerFoodDetail')?.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.detail-dim-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.detail-dim-btn').forEach(b => {
+            b.classList.remove('active', 'bg-emerald-600', 'text-white');
+            b.classList.add('text-slate-600');
+          });
+          btn.classList.add('active', 'bg-emerald-600', 'text-white');
+          btn.classList.remove('text-slate-600');
+
+          currentDetailDim = btn.getAttribute('data-dim');
+          const conf = RANK_DIM_CONFIG[currentDetailDim] || RANK_DIM_CONFIG.gram;
+          currentDetailPortionVal = conf.defaultVal;
+
+          const inputEl = document.getElementById('inputDetailPortionVal');
+          if (inputEl) inputEl.value = currentDetailPortionVal;
+
+          updateDetailDimPresets();
+          updateDetailCalculations();
+        });
+      });
+
+      document.getElementById('inputDetailPortionVal')?.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val) && val > 0) {
+          currentDetailPortionVal = val;
+          updateDetailCalculations();
+        }
+      });
+
+      document.getElementById('btnDetailDecPortion')?.addEventListener('click', () => {
+        const step = currentDetailDim === 'kcal' ? 25 : 10;
+        currentDetailPortionVal = Math.max(1, currentDetailPortionVal - step);
+        const inputEl = document.getElementById('inputDetailPortionVal');
+        if (inputEl) inputEl.value = currentDetailPortionVal;
+        updateDetailCalculations();
+      });
+
+      document.getElementById('btnDetailIncPortion')?.addEventListener('click', () => {
+        const step = currentDetailDim === 'kcal' ? 25 : 10;
+        currentDetailPortionVal = currentDetailPortionVal + step;
+        const inputEl = document.getElementById('inputDetailPortionVal');
+        if (inputEl) inputEl.value = currentDetailPortionVal;
+        updateDetailCalculations();
+      });
+
+      document.getElementById('btnToggleAllNutrients')?.addEventListener('click', () => {
+        isAllNutrientsTableExpanded = !isAllNutrientsTableExpanded;
+        document.getElementById('allNutrientsFullTableContainer')?.classList.toggle('hidden', !isAllNutrientsTableExpanded);
+        const icon = document.getElementById('iconToggleAllNutrients');
+        if (icon) icon.style.transform = isAllNutrientsTableExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+      });
+
+      document.getElementById('btnDetailAddToAnalysis')?.addEventListener('click', () => {
+        if (!currentDetailFood) return;
+        const grams = Math.round(calculateDetailGrams());
+        const conf = RANK_DIM_CONFIG[currentDetailDim] || RANK_DIM_CONFIG.gram;
+        const note = currentDetailDim === 'gram' ? `${grams}g` : `依目標 ${currentDetailPortionVal}${conf.unit}${conf.descName}逆推`;
+
+        analysisBasket.push({ food: currentDetailFood, portionGrams: grams, note: note });
+        updateAnalysisBasketBadge();
+        document.getElementById('drawerFoodDetail')?.classList.add('hidden');
+      });
+
+      document.getElementById('btnDetailAddToCompare')?.addEventListener('click', () => {
+        if (!currentDetailFood) return;
+        const grams = Math.round(calculateDetailGrams());
+        const conf = RANK_DIM_CONFIG[currentDetailDim] || RANK_DIM_CONFIG.gram;
+        const desc = currentDetailDim === 'gram' ? `基準：${grams}g` : `依 ${currentDetailPortionVal}${conf.unit}${conf.descName}逆推 (${grams}g)`;
+
+        setCompareSlot(nextCompareSlotToReplace, currentDetailFood.id, grams, desc);
+        nextCompareSlotToReplace = nextCompareSlotToReplace === 'A' ? 'B' : 'A';
+
+        document.getElementById('drawerFoodDetail')?.classList.add('hidden');
+        document.querySelector('.nav-tab[data-target="tabContentCompare"]')?.click();
+      });
+
+      // Compare slot selectors
+      document.getElementById('selectCompareFoodA')?.addEventListener('change', (e) => {
+        compSlotA.foodId = e.target.value;
+        renderCompareView();
+      });
+
+      document.getElementById('selectCompareFoodB')?.addEventListener('change', (e) => {
+        compSlotB.foodId = e.target.value;
+        renderCompareView();
+      });
+
+      document.getElementById('btnSwapCompareSlots')?.addEventListener('click', () => {
+        const temp = { ...compSlotA };
+        compSlotA = { ...compSlotB };
+        compSlotB = temp;
+        populateCompareSelects();
+        renderCompareView();
+      });
+
+      document.getElementById('btnCompModeCustom')?.addEventListener('click', () => {
+        compMode = 'custom';
+        document.getElementById('btnCompModeCustom')?.classList.add('bg-white', 'text-indigo-700', 'shadow-xs');
+        document.getElementById('btnCompModeCustom')?.classList.remove('text-slate-500');
+        document.getElementById('btnCompMode100g')?.classList.remove('bg-white', 'text-indigo-700', 'shadow-xs');
+        document.getElementById('btnCompMode100g')?.classList.add('text-slate-500');
+        renderCompareView();
+      });
+
+      document.getElementById('btnCompMode100g')?.addEventListener('click', () => {
+        compMode = '100g';
+        document.getElementById('btnCompMode100g')?.classList.add('bg-white', 'text-indigo-700', 'shadow-xs');
+        document.getElementById('btnCompMode100g')?.classList.remove('text-slate-500');
+        document.getElementById('btnCompModeCustom')?.classList.remove('bg-white', 'text-indigo-700', 'shadow-xs');
+        document.getElementById('btnCompModeCustom')?.classList.add('text-slate-500');
+        renderCompareView();
+      });
+
+      // Analysis clear
+      document.getElementById('btnClearAnalysisBasket')?.addEventListener('click', () => {
+        analysisBasket = [];
+        updateAnalysisBasketBadge();
+        renderAnalysisView();
+      });
+
+      // Clinical report trigger
+      document.getElementById('btnTriggerAnalysisAiReport')?.addEventListener('click', generateLocalClinicalReport);
+      document.getElementById('btnCloseAiReportModal')?.addEventListener('click', () => {
+        document.getElementById('modalAiReport')?.classList.add('hidden');
+      });
+
+      // Profile modal
+      document.getElementById('btnOpenProfileModal')?.addEventListener('click', () => {
+        document.getElementById('modalProfileSetting')?.classList.remove('hidden');
+      });
+
+      document.getElementById('btnCloseProfileModal')?.addEventListener('click', () => {
+        document.getElementById('modalProfileSetting')?.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.gender-btn').forEach(b => {
+            b.classList.remove('active', 'border-emerald-600', 'bg-emerald-50', 'text-emerald-900');
+            b.classList.add('border-slate-200', 'bg-white', 'text-slate-600');
+          });
+          btn.classList.add('active', 'border-emerald-600', 'bg-emerald-50', 'text-emerald-900');
+          btn.classList.remove('border-slate-200', 'bg-white', 'text-slate-600');
+
+          const g = btn.getAttribute('data-gender');
+          document.getElementById('groupPregnancySelect')?.classList.toggle('hidden', g === 'male');
+        });
+      });
+
+      document.getElementById('btnSaveProfileModal')?.addEventListener('click', () => {
+        const activeGenderBtn = document.querySelector('.gender-btn.active');
+        const g = activeGenderBtn?.getAttribute('data-gender') || 'female';
+        const age = document.getElementById('selectProfileAgeGroup')?.value || '31-50';
+        const act = document.getElementById('selectProfileActivity')?.value || 'light';
+        const preg = document.getElementById('selectProfilePregnancy')?.value || 'none';
+
+        userProfile = { gender: g, ageGroup: age, activity: act, pregnancy: preg };
+
+        updateProfileOverview();
+        if (currentDetailFood) updateDetailCalculations();
+        renderAnalysisView();
+
+        document.getElementById('modalProfileSetting')?.classList.add('hidden');
+      });
+
+      // Database info & Google Sheets sync modal
+      document.getElementById('btnOpenDbFileModal')?.addEventListener('click', () => {
+        document.getElementById('modalTfdaDbFile')?.classList.remove('hidden');
+      });
+
+      document.getElementById('btnCloseDbFileModal')?.addEventListener('click', () => {
+        document.getElementById('modalTfdaDbFile')?.classList.add('hidden');
+      });
+
+      document.getElementById('btnDismissDbFileModal')?.addEventListener('click', () => {
+        document.getElementById('modalTfdaDbFile')?.classList.add('hidden');
+      });
+
+      document.getElementById('btnExportCurrentDbCsv')?.addEventListener('click', exportDatabaseCsv);
+
+      document.getElementById('btnManualSyncDrive')?.addEventListener('click', () => {
+        loadDatabaseFromGoogleSheets();
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initEventHandlers();
+      
+      analysisBasket = []; 
+      
+      refreshDatabaseCategories();
+      renderFoodList();
+      renderRankPresets();
+      renderRankings();
+      populateCompareSelects();
+      renderCompareView();
+      updateProfileOverview();
+      updateAnalysisBasketBadge();
+      renderAnalysisView();
+
+      // Initiate Google Sheets database and DRIs synchronization
+      loadDatabaseFromGoogleSheets();
+    });
+  </script>
+</body>
+</html>

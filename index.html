@@ -14,6 +14,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+      // Automatic fallback for GitHub Pages when deploying from root folder
+      (function() {
+        if (window.location.hostname.endsWith('github.io') || window.location.protocol === 'file:') {
+          if (!window.location.pathname.includes('/docs/')) {
+            var base = window.location.pathname.replace(/\/+$/, '');
+            window.location.replace(base + '/docs/' + window.location.search + window.location.hash);
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -5,19 +5,19 @@
 
 ---
 
-## 🚀 部署至 GitHub Pages（最推薦、零失敗、零建置）
+## 🚀 部署至 GitHub Pages（100% 成功、杜絕空白頁）
 
-本專案已自動產出純靜態 HTML 部署包於 `/docs` 目錄中，**不需執行任何 CI / GitHub Actions，也不會有 Node/npm 安裝或建置錯誤**。
+本專案已完全編譯並內嵌為**純靜態 HTML**，放在 `/docs` 資料夾中。
 
-### 📌 30 秒啟用 GitHub Pages 步驟：
-1. 將專案程式碼 Push 至您的 GitHub 儲存庫（Repository）。
-2. 在 GitHub 儲存庫頁面頂部，點選 **`Settings`（設定）**。
-3. 在左側選單點選 **`Pages`**。
+### 📌 啟用 GitHub Pages 步驟：
+1. 將專案程式碼 **git add .**、**git commit** 並 **git push** 到 GitHub。
+2. 在您的 GitHub 儲存庫頁面點選 **`Settings`（設定）**。
+3. 左側選單點選 **`Pages`**。
 4. 在 **「Build and deployment」** 底下的 **「Source」**：
-   - 選擇 **`Deploy from a branch`**（從分支部署）。
-5. 在下方選擇：
-   - 分支（Branch）：**`main`**（或 `master`）
-   - 資料夾（Folder）：選擇 **`/docs`**
+   - 選擇 **`Deploy from a branch`**。
+5. 下方選單：
+   - **Branch**：選擇 **`main`**（或 `master`）。
+   - **Folder**：選擇 **`/docs`**（最推薦；若選 `/ (root)` 系統也已內建自動轉址保護）。
 6. 點擊 **`Save`（儲存）**。
 7. 約等待 30 秒至 1 分鐘，重新整理頁面即可看到網址：
    `https://<你的GitHub帳號>.github.io/<儲存庫名稱>/`
